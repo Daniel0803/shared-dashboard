@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+const Card = ({ children }) => <div style={{ border: "1px solid #ccc", borderRadius: 8 }}>{children}</div>;
+const CardContent = ({ children }) => <div style={{ padding: 10 }}>{children}</div>;
+const Button = ({ children, ...props }) => <button {...props} style={{ padding: 6, margin: 2 }}>{children}</button>;
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 

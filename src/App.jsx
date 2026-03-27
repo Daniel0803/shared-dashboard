@@ -12,7 +12,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// UI
 const Card = ({ children, style }) => (
   <div style={{ background: "#0f172a", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(0,0,0,.4)", ...style }}>
     {children}
@@ -84,18 +83,25 @@ export default function App() {
     setForm({ date: "", time: "", title: "" });
   };
 
-  // 7 day grid
+  // ✅ FIXED DATE GENERATION (correct weekday match)
   const getNext7Days = () => {
     const days = [];
     const today = new Date();
+
     for (let i = 0; i < 7; i++) {
-      const d = new Date();
+      const d = new Date(today);
       d.setDate(today.getDate() + i);
+
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const yyyy = d.getFullYear();
-      days.push(`${dd}/${mm}/${yyyy}`);
+
+      days.push({
+        key: `${dd}/${mm}/${yyyy}`,
+        dateObj: d
+      });
     }
+
     return days;
   };
 
@@ -103,11 +109,13 @@ export default function App() {
 
   const grouped = useMemo(() => {
     const g = {};
-    week.forEach((d) => (g[d] = []));
+    week.forEach((d) => (g[d.key] = []));
+
     events.forEach((e) => {
       if (!g[e.date]) g[e.date] = [];
       g[e.date].push(e);
     });
+
     return g;
   }, [events, week]);
 
@@ -136,25 +144,29 @@ export default function App() {
         </Card>
       )}
 
-      {/* GRID */}
+      {/* CALENDAR GRID */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 12 }}>
-        {week.map((date) => {
-          const [d, m, y] = date.split("/");
-          const dateObj = new Date(`${y}-${m}-${d}`);
-          const weekday = dateObj.toLocaleDateString("en-GB", { weekday: "long" });
+        {week.map((day) => {
+          const weekday = day.dateObj.toLocaleDateString("en-GB", { weekday: "long" });
 
           return (
-            <Card key={date}>
-              <h3 style={{ marginBottom: 4 }}>{weekday}</h3>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>{date}</div>
+            <Card key={day.key} style={{ minHeight: 200 }}>
 
-              {grouped[date].map((e) => (
-                <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 8, marginBottom: 6, borderRadius: 6 }}>
+              {/* HEADER DAY */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{weekday}</div>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>{day.key}</div>
+              </div>
+
+              {/* EVENTS */}
+              {grouped[day.key].map((e) => (
+                <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 8, marginBottom: 6, borderRadius: 6, background: "#020617" }}>
                   <div style={{ fontWeight: 600 }}>{e.title}</div>
                   <div style={{ fontSize: 12 }}>{e.time}</div>
                   <div style={{ fontSize: 10 }}>{e.user}</div>
                 </div>
               ))}
+
             </Card>
           );
         })}

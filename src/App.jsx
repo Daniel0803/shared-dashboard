@@ -1,21 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
+import { getDatabase, ref, onValue, push } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAfDf9HXxty8UrVQNvlVKxx_ERT9VLClQU",
   authDomain: "shared-dashboard-f428d.firebaseapp.com",
   databaseURL: "https://shared-dashboard-f428d-default-rtdb.firebaseio.com",
   projectId: "shared-dashboard-f428d",
-  storageBucket: "shared-dashboard-f428d.firebasestorage.app",
-  messagingSenderId: "205075244796",
-  appId: "1:205075244796:web:5983194662892a51af1979",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ===== UI =====
+// UI
 const Card = ({ children, style }) => (
   <div style={{ background: "#0f172a", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(0,0,0,.4)", ...style }}>
     {children}
@@ -87,7 +84,7 @@ export default function App() {
     setForm({ date: "", time: "", title: "" });
   };
 
-  // ===== 7 DAY GRID =====
+  // 7 day grid
   const getNext7Days = () => {
     const days = [];
     const today = new Date();
@@ -112,7 +109,7 @@ export default function App() {
       g[e.date].push(e);
     });
     return g;
-  }, [events]);
+  }, [events, week]);
 
   return (
     <div style={{ padding: 20, background: "#020617", minHeight: "100vh", color: "white" }}>
@@ -147,19 +144,20 @@ export default function App() {
           const weekday = dateObj.toLocaleDateString("en-GB", { weekday: "long" });
 
           return (
-          <Card key={date}>
-            <h3 style={{ marginBottom: 4 }}>{weekday}</h3>
-            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>{date}</div>
+            <Card key={date}>
+              <h3 style={{ marginBottom: 4 }}>{weekday}</h3>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>{date}</div>
 
-            {grouped[date].map((e) => (
-              <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 8, marginBottom: 6, borderRadius: 6 }}>
-                <div style={{ fontWeight: 600 }}>{e.title}</div>
-                <div style={{ fontSize: 12 }}>{e.time}</div>
-                <div style={{ fontSize: 10 }}>{e.user}</div>
-              </div>
-            ))}
-          </Card>
-        ))}
+              {grouped[date].map((e) => (
+                <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 8, marginBottom: 6, borderRadius: 6 }}>
+                  <div style={{ fontWeight: 600 }}>{e.title}</div>
+                  <div style={{ fontSize: 12 }}>{e.time}</div>
+                  <div style={{ fontSize: 10 }}>{e.user}</div>
+                </div>
+              ))}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

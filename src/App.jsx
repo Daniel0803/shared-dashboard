@@ -1,6 +1,6 @@
-// FULL PRODUCTION VERSION (Firebase + PIN + TV Mode)
-
 import React, { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 
@@ -12,7 +12,6 @@ const firebaseConfig = {
   storageBucket: "shared-dashboard-f428d.firebasestorage.app",
   messagingSenderId: "205075244796",
   appId: "1:205075244796:web:5983194662892a51af1979",
-  measurementId: "G-0JLZKW5KRC"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -21,7 +20,7 @@ const db = getDatabase(app);
 export default function App() {
   const [events, setEvents] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [pin, setPin] = useState("");
+  const [pinInput, setPinInput] = useState("");
   const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [editingId, setEditingId] = useState(null);
   const [tvMode, setTvMode] = useState(false);
@@ -34,58 +33,61 @@ export default function App() {
     Marelly: "2811",
   };
 
-  const colors = {
-    Daniel: "#dbeafe",
-    Dillon: "#dcfce7",
-    Marlon: "#fef9c3",
-    Dellary: "#fce7f3",
-    Marelly: "#f3e8ff",
+  const userColors = {
+    Daniel: "bg-blue-100",
+    Dillon: "bg-green-100",
+    Marlon: "bg-yellow-100",
+    Dellary: "bg-pink-100",
+    Marelly: "bg-purple-100",
   };
 
-  const formatDate = (d) => {
-    const [y, m, day] = d.split("-");
-    return `${day}/${m}/${y}`;
-  };
-
-  useEffect(() => {
-    const eventsRef = ref(db, "events");
-    onValue(eventsRef, (snap) => {
-      const data = snap.val() || {};
-      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-      setEvents(list);
-    });
-  }, []);
-
-  const login = () => {
-    if (pin === "0000") {
+  const handleLogin = () => {
+    if (pinInput === "0000") {
       setTvMode(true);
       setCurrentUser("TV");
       return;
     }
-    const user = Object.keys(users).find((u) => users[u] === pin);
+
+    const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
-      setPin("");
-    } else alert("Wrong PIN");
+      setPinInput("");
+    } else {
+      alert("Wrong PIN");
+    }
   };
 
-  const submit = () => {
+  const formatDate = (dateStr) => {
+    const [y, m, d] = dateStr.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  useEffect(() => {
+    const eventsRef = ref(db, "events");
+    onValue(eventsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const parsed = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      setEvents(parsed);
+    });
+  }, []);
+
+  const handleSubmit = () => {
     if (!form.date || !form.time || !form.title) return;
 
-    const date = formatDate(form.date);
+    const formattedDate = formatDate(form.date);
 
     if (editingId) {
-      update(ref(db, "events/" + editingId), {
+      update(ref(db, `events/${editingId}`), {
         ...form,
         user: currentUser,
-        date,
+        date: formattedDate,
       });
       setEditingId(null);
     } else {
       push(ref(db, "events"), {
         ...form,
         user: currentUser,
-        date,
+        date: formattedDate,
         createdAt: Date.now(),
       });
     }
@@ -93,13 +95,18 @@ export default function App() {
     setForm({ date: "", time: "", title: "" });
   };
 
-  const del = (id) => remove(ref(db, "events/" + id));
+  const handleDelete = (id) => {
+    remove(ref(db, `events/${id}`));
+  };
 
-  const edit = (e) => {
-    if (e.user !== currentUser) return;
-    const [d, m, y] = e.date.split("/");
-    setForm({ date: `${y}-${m}-${d}`, time: e.time, title: e.title });
-    setEditingId(e.id);
+  const handleEdit = (event) => {
+    if (event.user !== currentUser) return;
+
+    const [d, m, y] = event.date.split("/");
+    const iso = `${y}-${m}-${d}`;
+
+    setForm({ date: iso, time: event.time, title: event.title });
+    setEditingId(event.id);
   };
 
   const grouped = {};
@@ -110,49 +117,85 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center" }}>
-        <div>
-          <h2>Enter PIN</h2>
-          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} />
-          <button onClick={login}>Login</button>
-          <p>TV PIN: 0000</p>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-xl font-bold">Enter PIN</h2>
+            <input type="password" className="border p-2 w-full" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
+            <Button onClick={handleLogin} className="w-full">Login</Button>
+            <p className="text-xs text-gray-500">TV Mode PIN: 0000</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
       {!tvMode && (
-        <div>
-          <h3>{currentUser}</h3>
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-          <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-          <input placeholder="Note" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <button onClick={submit}>{editingId ? "Update" : "Add"}</button>
-        </div>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h2 className="font-bold">{currentUser}</h2>
+
+            <input type="date" className="w-full p-2 border" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})}/>
+            <input type="time" className="w-full p-2 border" value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}/>
+            <input type="text" placeholder="Note" className="w-full p-2 border" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})}/>
+
+            <Button onClick={handleSubmit} className="w-full">
+              {editingId ? "Update" : "Add"}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      <h2>{tvMode ? "TV Dashboard" : "Dashboard"}</h2>
+      <div className={tvMode ? "col-span-4" : "lg:col-span-3"}>
+        <h2 className="text-2xl font-bold mb-4">
+          {tvMode ? "📺 TV Dashboard (View Only)" : "Dashboard"}
+        </h2>
 
-      {Object.keys(grouped).map((date) => (
-        <div key={date}>
-          <h3>{date}</h3>
-          {grouped[date].map((e) => (
-            <div key={e.id} style={{ background: colors[e.user], padding: 10, marginBottom: 5 }}>
-              <div>{e.title} - {e.time}</div>
-              <div style={{ fontSize: 12 }}>{e.user}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Object.keys(grouped).map((date) => {
+            const [d, m, y] = date.split("/");
+            const dateObj = new Date(`${y}-${m}-${d}`);
+            const formattedDate = tvMode
+              ? dateObj
+                  .toLocaleDateString("en-GB", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })
+                  .replace(/\//g, "-")
+              : date;
 
-              {!tvMode && e.user === currentUser && (
-                <>
-                  <button onClick={() => edit(e)}>Edit</button>
-                  <button onClick={() => del(e.id)}>Delete</button>
-                </>
-              )}
-            </div>
+            return (
+            <Card key={date}>
+              <CardContent className="p-4">
+                <h3 className="font-bold mb-2">{formattedDate}</h3>
+
+                {grouped[date].map((event) => (
+                  <div key={event.id} className={`p-2 mb-2 rounded ${userColors[event.user]}`}>
+                    <div className="flex justify-between">
+                      <span>{event.title}</span>
+                      <span>{event.time}</span>
+                    </div>
+
+                    <div className="text-xs">{event.user}</div>
+
+                    {!tvMode && event.user === currentUser && (
+                      <div className="flex gap-2 mt-1">
+                        <Button size="sm" onClick={()=>handleEdit(event)}>Edit</Button>
+                        <Button size="sm" variant="destructive" onClick={()=>handleDelete(event.id)}>Delete</Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           ))}
         </div>
-      ))}
+      </div>
     </div>
   );
 }

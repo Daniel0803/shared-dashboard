@@ -3,10 +3,14 @@ import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-  projectId: "YOUR_PROJECT",
+  apiKey: "AIzaSyAfDf9HXxty8UrVQNvlVKxx_ERT9VLClQU",
+  authDomain: "shared-dashboard-f428d.firebaseapp.com",
+  databaseURL: "https://shared-dashboard-f428d-default-rtdb.firebaseio.com",
+  projectId: "shared-dashboard-f428d",
+  storageBucket: "shared-dashboard-f428d.firebasestorage.app",
+  messagingSenderId: "205075244796",
+  appId: "1:205075244796:web:5983194662892a51af1979",
+  measurementId: "G-0JLZKW5KRC"
 };
 
 const app = initializeApp(firebaseConfig);

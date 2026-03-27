@@ -18,12 +18,14 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 export default function App() {
+  const isTV = window.location.search.includes("tv");
+
   const [events, setEvents] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(isTV ? "TV" : null);
   const [pinInput, setPinInput] = useState("");
   const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [editingId, setEditingId] = useState(null);
-  const [tvMode, setTvMode] = useState(false);
+  const [tvMode, setTvMode] = useState(isTV);
 
   const users = {
     Daniel: "0803",
@@ -115,87 +117,121 @@ export default function App() {
     grouped[e.date].push(e);
   });
 
-  if (!currentUser) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-xl font-bold">Enter PIN</h2>
-            <input type="password" className="border p-2 w-full" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
-            <Button onClick={handleLogin} className="w-full">Login</Button>
-            <p className="text-xs text-gray-500">TV Mode PIN: 0000</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <>
+      {!currentUser ? (
+        <div className="flex items-center justify-center h-screen">
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h2 className="text-xl font-bold">Enter PIN</h2>
+              <input
+                type="password"
+                className="border p-2 w-full"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+              />
+              <Button onClick={handleLogin} className="w-full">
+                Login
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {!tvMode && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <h2 className="font-bold">{currentUser}</h2>
 
-      {!tvMode && (
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <h2 className="font-bold">{currentUser}</h2>
+                <input
+                  type="date"
+                  className="w-full p-2 border"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
+                <input
+                  type="time"
+                  className="w-full p-2 border"
+                  value={form.time}
+                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="Note"
+                  className="w-full p-2 border"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                />
 
-            <input type="date" className="w-full p-2 border" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})}/>
-            <input type="time" className="w-full p-2 border" value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}/>
-            <input type="text" placeholder="Note" className="w-full p-2 border" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})}/>
-
-            <Button onClick={handleSubmit} className="w-full">
-              {editingId ? "Update" : "Add"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className={tvMode ? "col-span-4" : "lg:col-span-3"}>
-        <h2 className="text-2xl font-bold mb-4">
-          {tvMode ? "📺 TV Dashboard (View Only)" : "Dashboard"}
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Object.keys(grouped).map((date) => {
-            const [d, m, y] = date.split("/");
-            const dateObj = new Date(`${y}-${m}-${d}`);
-            const formattedDate = tvMode
-              ? dateObj
-                  .toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  })
-                  .replace(/\//g, "-")
-              : date;
-
-            return (
-            <Card key={date}>
-              <CardContent className="p-4">
-                <h3 className="font-bold mb-2">{formattedDate}</h3>
-
-                {grouped[date].map((event) => (
-                  <div key={event.id} className={`p-2 mb-2 rounded ${userColors[event.user]}`}>
-                    <div className="flex justify-between">
-                      <span>{event.title}</span>
-                      <span>{event.time}</span>
-                    </div>
-
-                    <div className="text-xs">{event.user}</div>
-
-                    {!tvMode && event.user === currentUser && (
-                      <div className="flex gap-2 mt-1">
-                        <Button size="sm" onClick={()=>handleEdit(event)}>Edit</Button>
-                        <Button size="sm" variant="destructive" onClick={()=>handleDelete(event.id)}>Delete</Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                <Button onClick={handleSubmit} className="w-full">
+                  {editingId ? "Update" : "Add"}
+                </Button>
               </CardContent>
             </Card>
-          ))}
+          )}
+
+          <div className={tvMode ? "col-span-4" : "lg:col-span-3"}>
+            <h2 className="text-2xl font-bold mb-4">
+              {tvMode ? "📺 TV Dashboard" : "Dashboard"}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {Object.keys(grouped).map((date) => {
+                const [d, m, y] = date.split("/");
+                const dateObj = new Date(`${y}-${m}-${d}`);
+
+                const formattedDate = tvMode
+                  ? dateObj
+                      .toLocaleDateString("en-GB", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })
+                      .replace(/\//g, "-")
+                  : date;
+
+                return (
+                  <Card key={date}>
+                    <CardContent className="p-4">
+                      <h3 className="font-bold mb-2">{formattedDate}</h3>
+
+                      {grouped[date].map((event) => (
+                        <div
+                          key={event.id}
+                          className={`p-2 mb-2 rounded ${userColors[event.user]}`}
+                        >
+                          <div className="flex justify-between">
+                            <span>{event.title}</span>
+                            <span>{event.time}</span>
+                          </div>
+
+                          <div className="text-xs">{event.user}</div>
+
+                          {!tvMode && event.user === currentUser && (
+                            <div className="flex gap-2 mt-1">
+                              <Button size="sm" onClick={() => handleEdit(event)}>
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDelete(event.id)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

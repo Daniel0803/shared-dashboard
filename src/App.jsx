@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from "react";
-const Card = ({ children }) => <div style={{ border: "1px solid #ccc", borderRadius: 8 }}>{children}</div>;
-const CardContent = ({ children }) => <div style={{ padding: 10 }}>{children}</div>;
-const Button = ({ children, ...props }) => <button {...props} style={{ padding: 6, margin: 2 }}>{children}</button>;
+import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 
@@ -18,15 +15,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-export default function App() {
-  const isTV = window.location.search.includes("tv");
+// ===== UI =====
+const Card = ({ children, style }) => (
+  <div style={{ background: "#0f172a", borderRadius: 16, padding: 16, boxShadow: "0 10px 30px rgba(0,0,0,.4)", ...style }}>
+    {children}
+  </div>
+);
 
+const Button = ({ children, ...props }) => (
+  <button {...props} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "#22c55e", color: "#022c22", fontWeight: 600, cursor: "pointer" }}>
+    {children}
+  </button>
+);
+
+const Input = (props) => (
+  <input {...props} style={{ padding: 8, borderRadius: 8, border: "1px solid #334155", background: "#020617", color: "#e5e7eb" }} />
+);
+
+export default function App() {
   const [events, setEvents] = useState([]);
-  const [currentUser, setCurrentUser] = useState(isTV ? "TV" : null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [form, setForm] = useState({ date: "", time: "", title: "" });
-  const [editingId, setEditingId] = useState(null);
-  const [tvMode, setTvMode] = useState(isTV);
 
   const users = {
     Daniel: "0803",
@@ -36,203 +46,121 @@ export default function App() {
     Marelly: "2811",
   };
 
-  const userColors = {
-    Daniel: "bg-blue-100",
-    Dillon: "bg-green-100",
-    Marlon: "bg-yellow-100",
-    Dellary: "bg-pink-100",
-    Marelly: "bg-purple-100",
+  const colors = {
+    Daniel: "#3b82f6",
+    Dillon: "#22c55e",
+    Marlon: "#eab308",
+    Dellary: "#ec4899",
+    Marelly: "#a855f7",
   };
 
-  const handleLogin = () => {
-    if (pinInput === "0000") {
-      setTvMode(true);
-      setCurrentUser("TV");
-      return;
-    }
-
+  const login = () => {
     const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
-    } else {
-      alert("Wrong PIN");
-    }
+    } else alert("Wrong PIN");
   };
 
-  const formatDate = (dateStr) => {
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
+  const formatDate = (d) => {
+    const [y, m, day] = d.split("-");
+    return `${day}/${m}/${y}`;
   };
 
   useEffect(() => {
     const eventsRef = ref(db, "events");
-    onValue(eventsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const parsed = Object.entries(data).map(([id, val]) => ({ id, ...val }));
-      setEvents(parsed);
+    onValue(eventsRef, (snap) => {
+      const data = snap.val() || {};
+      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      setEvents(list);
     });
   }, []);
 
-  const handleSubmit = () => {
+  const addEvent = () => {
     if (!form.date || !form.time || !form.title) return;
-
-    const formattedDate = formatDate(form.date);
-
-    if (editingId) {
-      update(ref(db, `events/${editingId}`), {
-        ...form,
-        user: currentUser,
-        date: formattedDate,
-      });
-      setEditingId(null);
-    } else {
-      push(ref(db, "events"), {
-        ...form,
-        user: currentUser,
-        date: formattedDate,
-        createdAt: Date.now(),
-      });
-    }
-
+    push(ref(db, "events"), {
+      ...form,
+      date: formatDate(form.date),
+      user: currentUser,
+      createdAt: Date.now(),
+    });
     setForm({ date: "", time: "", title: "" });
   };
 
-  const handleDelete = (id) => {
-    remove(ref(db, `events/${id}`));
+  // ===== 7 DAY GRID =====
+  const getNext7Days = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() + i);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      days.push(`${dd}/${mm}/${yyyy}`);
+    }
+    return days;
   };
 
-  const handleEdit = (event) => {
-    if (event.user !== currentUser) return;
+  const week = getNext7Days();
 
-    const [d, m, y] = event.date.split("/");
-    const iso = `${y}-${m}-${d}`;
-
-    setForm({ date: iso, time: event.time, title: event.title });
-    setEditingId(event.id);
-  };
-
-  const grouped = {};
-  events.forEach((e) => {
-    if (!grouped[e.date]) grouped[e.date] = [];
-    grouped[e.date].push(e);
-  });
+  const grouped = useMemo(() => {
+    const g = {};
+    week.forEach((d) => (g[d] = []));
+    events.forEach((e) => {
+      if (!g[e.date]) g[e.date] = [];
+      g[e.date].push(e);
+    });
+    return g;
+  }, [events]);
 
   return (
-    <>
-      {!currentUser ? (
-        <div className="flex items-center justify-center h-screen">
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <h2 className="text-xl font-bold">Enter PIN</h2>
-              <input
-                type="password"
-                className="border p-2 w-full"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-              />
-              <Button onClick={handleLogin} className="w-full">
-                Login
-              </Button>
-            </CardContent>
-          </Card>
+    <div style={{ padding: 20, background: "#020617", minHeight: "100vh", color: "white" }}>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h1>📺 Dashboard</h1>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
+          <Button onClick={login}>Login</Button>
         </div>
-      ) : (
-        <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {!tvMode && (
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <h2 className="font-bold">{currentUser}</h2>
+      </div>
 
-                <input
-                  type="date"
-                  className="w-full p-2 border"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                />
-                <input
-                  type="time"
-                  className="w-full p-2 border"
-                  value={form.time}
-                  onChange={(e) => setForm({ ...form, time: e.target.value })}
-                />
-                <input
-                  type="text"
-                  placeholder="Note"
-                  className="w-full p-2 border"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                />
-
-                <Button onClick={handleSubmit} className="w-full">
-                  {editingId ? "Update" : "Add"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className={tvMode ? "col-span-4" : "lg:col-span-3"}>
-            <h2 className="text-2xl font-bold mb-4">
-              {tvMode ? "📺 TV Dashboard" : "Dashboard"}
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {Object.keys(grouped).map((date) => {
-                const [d, m, y] = date.split("/");
-                const dateObj = new Date(`${y}-${m}-${d}`);
-
-                const formattedDate = tvMode
-                  ? dateObj
-                      .toLocaleDateString("en-GB", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })
-                      .replace(/\//g, "-")
-                  : date;
-
-                return (
-                  <Card key={date}>
-                    <CardContent className="p-4">
-                      <h3 className="font-bold mb-2">{formattedDate}</h3>
-
-                      {grouped[date].map((event) => (
-                        <div
-                          key={event.id}
-                          className={`p-2 mb-2 rounded ${userColors[event.user]}`}
-                        >
-                          <div className="flex justify-between">
-                            <span>{event.title}</span>
-                            <span>{event.time}</span>
-                          </div>
-
-                          <div className="text-xs">{event.user}</div>
-
-                          {!tvMode && event.user === currentUser && (
-                            <div className="flex gap-2 mt-1">
-                              <Button size="sm" onClick={() => handleEdit(event)}>
-                                Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(event.id)}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+      {/* INPUT */}
+      {currentUser && (
+        <Card style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
+            <Input type="time" value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})} />
+            <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
+            <Button onClick={addEvent}>Add</Button>
           </div>
-        </div>
+        </Card>
       )}
-    </>
+
+      {/* GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 12 }}>
+        {week.map((date) => {
+          const [d, m, y] = date.split("/");
+          const dateObj = new Date(`${y}-${m}-${d}`);
+          const weekday = dateObj.toLocaleDateString("en-GB", { weekday: "long" });
+
+          return (
+          <Card key={date}>
+            <h3 style={{ marginBottom: 4 }}>{weekday}</h3>
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>{date}</div>
+
+            {grouped[date].map((e) => (
+              <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 8, marginBottom: 6, borderRadius: 6 }}>
+                <div style={{ fontWeight: 600 }}>{e.title}</div>
+                <div style={{ fontSize: 12 }}>{e.time}</div>
+                <div style={{ fontSize: 10 }}>{e.user}</div>
+              </div>
+            ))}
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }

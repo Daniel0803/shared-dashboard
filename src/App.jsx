@@ -27,7 +27,6 @@ const generateTimeOptions = () => {
 
 const timeOptions = generateTimeOptions();
 
-// ===== FORMAT TIME (AM/PM) =====
 const formatTime = (time) => {
   if (!time) return "";
   const [h, m] = time.split(":");
@@ -323,8 +322,18 @@ export default function App() {
                       borderRadius: 6,
                       background: "#020617"
                     }}>
-                      <div style={{ fontSize: 11 }}>{e.title}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600 }}>{e.title}</div>
                       <div style={{ fontSize: 10 }}>{formatTime(e.time)}</div>
+
+                      {/* 👤 USER NAME */}
+                      <div style={{
+                        fontSize: 10,
+                        color: colors[e.user],
+                        fontWeight: 600,
+                        marginTop: 2
+                      }}>
+                        {e.user}
+                      </div>
 
                       {currentUser === e.user && (
                         <div style={{ marginTop: 4 }}>

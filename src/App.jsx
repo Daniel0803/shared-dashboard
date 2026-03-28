@@ -145,18 +145,12 @@ export default function App() {
     return `${day}/${m}/${y}`;
   };
 
-  // 🔥 SELECT DATE FEATURE
   const handleSelectDate = (day) => {
     if (!day) return;
-
     const d = day.dateObj;
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
-      date: `${yyyy}-${mm}-${dd}`,
+      date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
     }));
   };
 
@@ -286,11 +280,7 @@ export default function App() {
         <div style={{ marginBottom: 20, display: "flex", flexDirection: columns === 2 ? "column" : "row", gap: 10 }}>
           <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
 
-          <select
-            value={form.time}
-            onChange={(e)=>setForm({...form,time:e.target.value})}
-            style={{ padding: 8, borderRadius: 8, background: "#020617", color: "white" }}
-          >
+          <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
             <option value="">Select time</option>
             {timeOptions.map(t => (
               <option key={t} value={t}>{formatTime(t)}</option>
@@ -308,7 +298,7 @@ export default function App() {
       {/* WEEKDAY HEADER */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-          <div key={day} style={{ textAlign: "center", fontWeight: 700, fontSize: 12 }}>
+          <div key={day} style={{ textAlign: "center", fontWeight: 700 }}>
             {day}
           </div>
         ))}
@@ -320,43 +310,28 @@ export default function App() {
           const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
           return (
-            <Card
-              key={i}
-              style={{
-                border: isToday ? "2px solid #22c55e" : undefined,
-                cursor: day ? "pointer" : "default"
-              }}
-              onClick={() => handleSelectDate(day)}
-            >
+            <Card key={i} onClick={()=>handleSelectDate(day)} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
               {day && (
                 <>
-                  <div style={{ fontSize: 12, marginBottom: 6, color: isToday ? "#22c55e" : "white" }}>
-                    {day.dateObj.getDate()}
-                  </div>
+                  <div>{day.dateObj.getDate()}</div>
 
-                  {grouped[day.key]?.map(e => (
-                    <div key={e.id} style={{
-                      borderLeft: `4px solid ${colors[e.user]}`,
-                      padding: 6,
-                      marginBottom: 4,
-                      borderRadius: 6,
-                      background: "#020617"
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 600 }}>{e.title}</div>
-                      <div style={{ fontSize: 10 }}>{formatTime(e.time)}</div>
+                  {grouped[day.key]
+                    ?.slice()
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .map(e => (
+                      <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 4, marginBottom: 4 }}>
+                        <div>{e.title}</div>
+                        <div>{formatTime(e.time)}</div>
+                        <div style={{ color: colors[e.user] }}>{e.user}</div>
 
-                      <div style={{ fontSize: 10, color: colors[e.user], fontWeight: 600 }}>
-                        {e.user}
+                        {currentUser === e.user && (
+                          <>
+                            <Button onClick={()=>handleEdit(e)}>Edit</Button>
+                            <Button variant="danger" onClick={()=>handleDelete(e)}>Del</Button>
+                          </>
+                        )}
                       </div>
-
-                      {currentUser === e.user && (
-                        <div style={{ marginTop: 4 }}>
-                          <Button variant="secondary" onClick={()=>handleEdit(e)}>Edit</Button>
-                          <Button variant="danger" onClick={()=>handleDelete(e)}>Del</Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
                 </>
               )}
             </Card>

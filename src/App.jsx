@@ -12,51 +12,92 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// UI
+// ===== TIME OPTIONS =====
+const generateTimeOptions = () => {
+  const times = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m of [0, 30]) {
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      times.push(`${hh}:${mm}`);
+    }
+  }
+  return times;
+};
+
+const timeOptions = generateTimeOptions();
+
+// ===== FORMAT TIME (AM/PM) =====
+const formatTime = (time) => {
+  if (!time) return "";
+  const [h, m] = time.split(":");
+  let hour = parseInt(h);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${m} ${ampm}`;
+};
+
+// ===== RESPONSIVE =====
+const getColumns = () => {
+  if (window.innerWidth < 600) return 2;
+  if (window.innerWidth < 900) return 4;
+  return 7;
+};
+
+// ===== UI =====
 const Card = ({ children, style }) => (
-  <div style={{
-    background: "#0f172a",
-    borderRadius: 12,
-    padding: 10,
-    minHeight: 120,
-    border: "1px solid rgba(255,255,255,0.05)",
-    ...style
-  }}>
+  <div
+    style={{
+      background: "#0f172a",
+      borderRadius: 12,
+      padding: 8,
+      minHeight: window.innerWidth < 600 ? 90 : 120,
+      fontSize: window.innerWidth < 600 ? 11 : 14,
+      border: "1px solid rgba(255,255,255,0.05)",
+      ...style,
+    }}
+  >
     {children}
   </div>
 );
 
 const Button = ({ children, variant = "primary", ...props }) => {
-  const styles = {
+  const colors = {
     primary: "#22c55e",
     danger: "#ef4444",
-    secondary: "#334155"
+    secondary: "#334155",
   };
 
   return (
-    <button {...props} style={{
-      padding: "6px 10px",
-      borderRadius: 6,
-      border: "none",
-      background: styles[variant],
-      color: "white",
-      fontWeight: 600,
-      cursor: "pointer",
-      marginRight: 4
-    }}>
+    <button
+      {...props}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 6,
+        border: "none",
+        background: colors[variant],
+        color: "white",
+        fontWeight: 600,
+        cursor: "pointer",
+        marginRight: 4,
+      }}
+    >
       {children}
     </button>
   );
 };
 
 const Input = (props) => (
-  <input {...props} style={{
-    padding: 8,
-    borderRadius: 8,
-    border: "1px solid #334155",
-    background: "#020617",
-    color: "white"
-  }} />
+  <input
+    {...props}
+    style={{
+      padding: 8,
+      borderRadius: 8,
+      border: "1px solid #334155",
+      background: "#020617",
+      color: "white",
+    }}
+  />
 );
 
 export default function App() {
@@ -66,6 +107,13 @@ export default function App() {
   const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [columns, setColumns] = useState(getColumns());
+
+  useEffect(() => {
+    const handleResize = () => setColumns(getColumns());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const users = {
     Daniel: "0803",
@@ -83,7 +131,6 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
-  // LOGIN
   const login = () => {
     const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
@@ -102,12 +149,14 @@ export default function App() {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
       const data = snap.val() || {};
-      const list = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+      const list = Object.entries(data).map(([id, val]) => ({
+        id,
+        ...val,
+      }));
       setEvents(list);
     });
   }, []);
 
-  // ADD / UPDATE
   const submitEvent = () => {
     if (!form.date || !form.time || !form.title) return;
 
@@ -128,30 +177,41 @@ export default function App() {
     setForm({ date: "", time: "", title: "" });
   };
 
-  // EDIT
   const handleEdit = (event) => {
     if (event.user !== currentUser) return;
 
     const [d, m, y] = event.date.split("/");
-    setForm({ date: `${y}-${m}-${d}`, time: event.time, title: event.title });
+    setForm({
+      date: `${y}-${m}-${d}`,
+      time: event.time,
+      title: event.title,
+    });
+
     setEditingId(event.id);
   };
 
-  // DELETE
   const handleDelete = (event) => {
     if (event.user !== currentUser) return;
     remove(ref(db, `events/${event.id}`));
   };
 
-  // MONTH NAV
   const changeMonth = (offset) => {
     const newDate = new Date(currentDate);
     newDate.setMonth(currentDate.getMonth() + offset);
     setCurrentDate(newDate);
   };
 
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const startOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
+
+  const endOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  );
 
   const daysInMonth = endOfMonth.getDate();
   const startDay = startOfMonth.getDay();
@@ -163,7 +223,12 @@ export default function App() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
 
   for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+    const d = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      i
+    );
+
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
@@ -189,10 +254,10 @@ export default function App() {
   });
 
   return (
-    <div style={{ padding: 20, background: "#020617", minHeight: "100vh", color: "white" }}>
+    <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", flexDirection: columns === 2 ? "column" : "row", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
         <div>
           <h1>🗓️ Balentina Schedule</h1>
           <div style={{ fontSize: 12, opacity: 0.7 }}>
@@ -200,7 +265,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8 }}>
           <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
           <Button onClick={login}>Login</Button>
         </div>
@@ -215,43 +280,42 @@ export default function App() {
 
       {/* INPUT */}
       {currentUser && (
-        <div style={{ marginBottom: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ marginBottom: 20, display: "flex", flexDirection: columns === 2 ? "column" : "row", gap: 10 }}>
           <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
-          <Input type="time" value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})} />
+
+          <select
+            value={form.time}
+            onChange={(e)=>setForm({...form,time:e.target.value})}
+            style={{ padding: 8, borderRadius: 8, background: "#020617", color: "white" }}
+          >
+            <option value="">Select time</option>
+            {timeOptions.map(t => (
+              <option key={t} value={t}>{formatTime(t)}</option>
+            ))}
+          </select>
+
           <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
-          <Button onClick={submitEvent}>{editingId ? "Update" : "Add"}</Button>
+
+          <Button onClick={submitEvent}>
+            {editingId ? "Update" : "Add"}
+          </Button>
         </div>
       )}
 
-      {/* WEEKDAYS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", marginBottom: 10 }}>
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
-          <div key={d} style={{ textAlign: "center", fontWeight: 600 }}>{d}</div>
-        ))}
-      </div>
-
       {/* CALENDAR */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
         {calendarDays.map((day, i) => {
-          const isToday = day &&
-            day.dateObj.getDate() === today.getDate() &&
-            day.dateObj.getMonth() === today.getMonth() &&
-            day.dateObj.getFullYear() === today.getFullYear();
+          const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
           return (
             <Card key={i} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
               {day && (
                 <>
-                  <div style={{
-                    fontSize: 12,
-                    marginBottom: 6,
-                    color: isToday ? "#22c55e" : "white",
-                    fontWeight: isToday ? 700 : 400
-                  }}>
+                  <div style={{ fontSize: 12, marginBottom: 6, color: isToday ? "#22c55e" : "white" }}>
                     {day.dateObj.getDate()}
                   </div>
 
-                  {grouped[day.key]?.map((e) => (
+                  {grouped[day.key]?.map(e => (
                     <div key={e.id} style={{
                       borderLeft: `4px solid ${colors[e.user]}`,
                       padding: 6,
@@ -259,14 +323,13 @@ export default function App() {
                       borderRadius: 6,
                       background: "#020617"
                     }}>
-                      <div style={{ fontSize: 12 }}>{e.title}</div>
-                      <div style={{ fontSize: 10 }}>{e.time}</div>
-                      <div style={{ fontSize: 9 }}>{e.user}</div>
+                      <div style={{ fontSize: 11 }}>{e.title}</div>
+                      <div style={{ fontSize: 10 }}>{formatTime(e.time)}</div>
 
                       {currentUser === e.user && (
                         <div style={{ marginTop: 4 }}>
-                          <Button variant="secondary" onClick={() => handleEdit(e)}>Edit</Button>
-                          <Button variant="danger" onClick={() => handleDelete(e)}>Delete</Button>
+                          <Button variant="secondary" onClick={()=>handleEdit(e)}>Edit</Button>
+                          <Button variant="danger" onClick={()=>handleDelete(e)}>Del</Button>
                         </div>
                       )}
                     </div>
@@ -277,7 +340,6 @@ export default function App() {
           );
         })}
       </div>
-
     </div>
   );
 }

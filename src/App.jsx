@@ -12,7 +12,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ===== TIME OPTIONS =====
+// ===== TIME =====
 const generateTimeOptions = () => {
   const times = [];
   for (let h = 0; h < 24; h++) {
@@ -24,7 +24,6 @@ const generateTimeOptions = () => {
   }
   return times;
 };
-
 const timeOptions = generateTimeOptions();
 
 const formatTime = (time) => {
@@ -105,7 +104,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
-  const [form, setForm] = useState({ date: "", time: "", title: "" });
+  const [form, setForm] = useState({ date: "", time: "", title: "", recurring: false });
   const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [columns, setColumns] = useState(getColumns());
@@ -184,7 +183,7 @@ export default function App() {
       push(ref(db, "events"), payload);
     }
 
-    setForm({ date: "", time: "", title: "" });
+    setForm({ date: "", time: "", title: "", recurring: false });
   };
 
   const handleEdit = (event) => {
@@ -195,6 +194,7 @@ export default function App() {
       date: `${y}-${m}-${d}`,
       time: event.time,
       title: event.title,
+      recurring: event.recurring || false
     });
 
     setEditingId(event.id);
@@ -238,12 +238,35 @@ export default function App() {
 
   const grouped = useMemo(() => {
     const g = {};
+
     events.forEach((e) => {
       if (!g[e.date]) g[e.date] = [];
       g[e.date].push(e);
+
+      if (e.recurring) {
+        const [d, m, y] = e.date.split("/");
+        const original = new Date(`${y}-${m}-${d}`);
+        const originalDay = original.getDay();
+
+        calendarDays.forEach((day) => {
+          if (!day) return;
+
+          const current = day.dateObj;
+
+          if (
+            current.getDay() === originalDay &&
+            current.getMonth() === currentDate.getMonth() &&
+            day.key !== e.date
+          ) {
+            if (!g[day.key]) g[day.key] = [];
+            g[day.key].push(e);
+          }
+        });
+      }
     });
+
     return g;
-  }, [events]);
+  }, [events, calendarDays, currentDate]);
 
   const monthName = currentDate.toLocaleDateString("en-GB", {
     month: "long",
@@ -254,17 +277,25 @@ export default function App() {
     <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", flexDirection: columns === 2 ? "column" : "row", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <h1>🗓️ Balentina Schedule</h1>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>
-            {currentUser ? `Logged in: ${currentUser}` : "Not logged in"}
-          </div>
+          <div>{currentUser ? `Logged in: ${currentUser}` : "Not logged in"}</div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
+        <div>
+          <Input type="password" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
           <Button onClick={login}>Login</Button>
+
+          {/* 🔁 TOGGLE */}
+          {currentUser && (
+            <Button
+              variant="secondary"
+              onClick={() => setForm(prev => ({ ...prev, recurring: !prev.recurring }))}
+            >
+              🔁 {form.recurring ? "Weekly ON" : "Weekly OFF"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -277,11 +308,11 @@ export default function App() {
 
       {/* INPUT */}
       {currentUser && (
-        <div style={{ marginBottom: 20, display: "flex", flexDirection: columns === 2 ? "column" : "row", gap: 10 }}>
+        <div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
           <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
 
           <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
-            <option value="">Select time</option>
+            <option value="">Time</option>
             {timeOptions.map(t => (
               <option key={t} value={t}>{formatTime(t)}</option>
             ))}
@@ -289,18 +320,14 @@ export default function App() {
 
           <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
 
-          <Button onClick={submitEvent}>
-            {editingId ? "Update" : "Add"}
-          </Button>
+          <Button onClick={submitEvent}>{editingId ? "Update" : "Add"}</Button>
         </div>
       )}
 
       {/* WEEKDAY HEADER */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-          <div key={day} style={{ textAlign: "center", fontWeight: 700 }}>
-            {day}
-          </div>
+          <div key={day} style={{ textAlign: "center", fontWeight: 700 }}>{day}</div>
         ))}
       </div>
 
@@ -319,10 +346,11 @@ export default function App() {
                     ?.slice()
                     .sort((a, b) => a.time.localeCompare(b.time))
                     .map(e => (
-                      <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 4, marginBottom: 4 }}>
+                      <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, marginBottom: 4 }}>
                         <div>{e.title}</div>
                         <div>{formatTime(e.time)}</div>
                         <div style={{ color: colors[e.user] }}>{e.user}</div>
+                        {e.recurring && <div>🔁</div>}
 
                         {currentUser === e.user && (
                           <>

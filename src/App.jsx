@@ -12,7 +12,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ===== TIME OPTIONS =====
+// ===== TIME =====
 const generateTimeOptions = () => {
   const times = [];
   for (let h = 0; h < 24; h++) {
@@ -24,7 +24,6 @@ const generateTimeOptions = () => {
   }
   return times;
 };
-
 const timeOptions = generateTimeOptions();
 
 const formatTime = (time) => {
@@ -51,8 +50,6 @@ const Card = ({ children, style, ...props }) => (
       background: "#0f172a",
       borderRadius: 12,
       padding: 8,
-      minHeight: window.innerWidth < 600 ? 90 : 120,
-      fontSize: window.innerWidth < 600 ? 11 : 14,
       border: "1px solid rgba(255,255,255,0.05)",
       transition: "0.2s",
       ...style,
@@ -109,6 +106,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [columns, setColumns] = useState(getColumns());
+  const [recentNotes, setRecentNotes] = useState([]);
 
   useEffect(() => {
     const handleResize = () => setColumns(getColumns());
@@ -132,12 +130,26 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
+  // LOGIN + LOAD RECENT NOTES
   const login = () => {
     const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
+
+      const stored = JSON.parse(localStorage.getItem(`notes_${user}`)) || [];
+      setRecentNotes(stored);
     } else alert("Wrong PIN");
+  };
+
+  const saveRecentNote = (note) => {
+    if (!currentUser || !note) return;
+
+    let updated = [note, ...recentNotes.filter((n) => n !== note)];
+    updated = updated.slice(0, 10);
+
+    setRecentNotes(updated);
+    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updated));
   };
 
   const formatDate = (d) => {
@@ -145,7 +157,7 @@ export default function App() {
     return `${day}/${m}/${y}`;
   };
 
-  // 🔥 SELECT DATE FEATURE
+  // 🔥 SELECT DATE
   const handleSelectDate = (day) => {
     if (!day) return;
 
@@ -175,6 +187,8 @@ export default function App() {
 
   const submitEvent = () => {
     if (!form.date || !form.time || !form.title) return;
+
+    saveRecentNote(form.title);
 
     const payload = {
       ...form,
@@ -260,55 +274,52 @@ export default function App() {
     <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", flexDirection: columns === 2 ? "column" : "row", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
-        <div>
-          <h1>🗓️ Balentina Schedule</h1>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>
-            {currentUser ? `Logged in: ${currentUser}` : "Not logged in"}
-          </div>
-        </div>
+      <div style={{ marginBottom: 20 }}>
+        <h1>🗓️ Balentina Schedule</h1>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
-          <Button onClick={login}>Login</Button>
-        </div>
-      </div>
+        <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
+        <Button onClick={login}>Login</Button>
 
-      {/* MONTH */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <Button onClick={() => changeMonth(-1)}>◀</Button>
-        <h2>{monthName}</h2>
-        <Button onClick={() => changeMonth(1)}>▶</Button>
+        {currentUser && <div>Logged in: {currentUser}</div>}
       </div>
 
       {/* INPUT */}
       {currentUser && (
-        <div style={{ marginBottom: 20, display: "flex", flexDirection: columns === 2 ? "column" : "row", gap: 10 }}>
+        <div style={{ marginBottom: 20 }}>
           <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
 
-          <select
-            value={form.time}
-            onChange={(e)=>setForm({...form,time:e.target.value})}
-            style={{ padding: 8, borderRadius: 8, background: "#020617", color: "white" }}
-          >
-            <option value="">Select time</option>
+          <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
+            <option value="">Time</option>
             {timeOptions.map(t => (
               <option key={t} value={t}>{formatTime(t)}</option>
             ))}
           </select>
 
-          <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
+          <Input
+            placeholder="Note"
+            value={form.title}
+            onChange={(e)=>setForm({...form,title:e.target.value})}
+          />
 
-          <Button onClick={submitEvent}>
-            {editingId ? "Update" : "Add"}
-          </Button>
+          {/* RECENT NOTES */}
+          {recentNotes.length > 0 && (
+            <div style={{ background: "#111", marginTop: 5 }}>
+              {recentNotes.map((n, i) => (
+                <div key={i} onClick={()=>setForm({...form,title:n})}>
+                  {n}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button onClick={submitEvent}>Add</Button>
         </div>
       )}
 
       {/* WEEKDAY HEADER */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-          <div key={day} style={{ textAlign: "center", fontWeight: 700, fontSize: 12 }}>
+          <div key={day} style={{ textAlign: "center", fontWeight: 700 }}>
             {day}
           </div>
         ))}
@@ -316,52 +327,23 @@ export default function App() {
 
       {/* CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
-        {calendarDays.map((day, i) => {
-          const isToday = day && day.dateObj.toDateString() === today.toDateString();
+        {calendarDays.map((day, i) => (
+          <Card key={i} onClick={()=>handleSelectDate(day)}>
+            {day && (
+              <>
+                <div>{day.dateObj.getDate()}</div>
 
-          return (
-            <Card
-              key={i}
-              style={{
-                border: isToday ? "2px solid #22c55e" : undefined,
-                cursor: day ? "pointer" : "default"
-              }}
-              onClick={() => handleSelectDate(day)}
-            >
-              {day && (
-                <>
-                  <div style={{ fontSize: 12, marginBottom: 6, color: isToday ? "#22c55e" : "white" }}>
-                    {day.dateObj.getDate()}
+                {grouped[day.key]?.map(e => (
+                  <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}` }}>
+                    <div>{e.title}</div>
+                    <div>{formatTime(e.time)}</div>
+                    <div>{e.user}</div>
                   </div>
-
-                  {grouped[day.key]?.map(e => (
-                    <div key={e.id} style={{
-                      borderLeft: `4px solid ${colors[e.user]}`,
-                      padding: 6,
-                      marginBottom: 4,
-                      borderRadius: 6,
-                      background: "#020617"
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 600 }}>{e.title}</div>
-                      <div style={{ fontSize: 10 }}>{formatTime(e.time)}</div>
-
-                      <div style={{ fontSize: 10, color: colors[e.user], fontWeight: 600 }}>
-                        {e.user}
-                      </div>
-
-                      {currentUser === e.user && (
-                        <div style={{ marginTop: 4 }}>
-                          <Button variant="secondary" onClick={()=>handleEdit(e)}>Edit</Button>
-                          <Button variant="danger" onClick={()=>handleDelete(e)}>Del</Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
-            </Card>
-          );
-        })}
+                ))}
+              </>
+            )}
+          </Card>
+        ))}
       </div>
 
     </div>

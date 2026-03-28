@@ -116,7 +116,7 @@ export default function App() {
   }, []);
 
   const users = {
-    Daniël: "030803",
+    Daniël: "0803",
     Dillon: "2712",
     Marlon: "1004",
     Dellary: "2608",

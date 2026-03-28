@@ -116,7 +116,7 @@ export default function App() {
   }, []);
 
   const users = {
-    Daniël: "0803",
+    Daniel: "0803",
     Dillon: "2712",
     Marlon: "1004",
     Dellary: "2608",
@@ -124,7 +124,7 @@ export default function App() {
   };
 
   const colors = {
-    Daniël: "#3b82f6",
+    Daniel: "#3b82f6",
     Dillon: "#22c55e",
     Marlon: "#eab308",
     Dellary: "#ec4899",

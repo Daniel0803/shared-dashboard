@@ -124,7 +124,7 @@ export default function App() {
   };
 
   const colors = {
-    Daniel: "#3b82f6",
+    Daniël: "#3b82f6",
     Dillon: "#22c55e",
     Marlon: "#eab308",
     Dellary: "#ec4899",

@@ -143,7 +143,6 @@ export default function App() {
     return `${day}/${m}/${y}`;
   };
 
-  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -200,17 +199,8 @@ export default function App() {
     setCurrentDate(newDate);
   };
 
-  const startOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  );
-
-  const endOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  );
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
   const daysInMonth = endOfMonth.getDate();
   const startDay = startOfMonth.getDay();
@@ -222,11 +212,7 @@ export default function App() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
 
   for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      i
-    );
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
 
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -301,6 +287,19 @@ export default function App() {
         </div>
       )}
 
+      {/* WEEKDAY HEADER */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        marginBottom: 8
+      }}>
+        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
+          <div key={day} style={{ textAlign: "center", fontWeight: 700, fontSize: 12 }}>
+            {day}
+          </div>
+        ))}
+      </div>
+
       {/* CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
         {calendarDays.map((day, i) => {
@@ -325,13 +324,7 @@ export default function App() {
                       <div style={{ fontSize: 11, fontWeight: 600 }}>{e.title}</div>
                       <div style={{ fontSize: 10 }}>{formatTime(e.time)}</div>
 
-                      {/* 👤 USER NAME */}
-                      <div style={{
-                        fontSize: 10,
-                        color: colors[e.user],
-                        fontWeight: 600,
-                        marginTop: 2
-                      }}>
+                      <div style={{ fontSize: 10, color: colors[e.user], fontWeight: 600 }}>
                         {e.user}
                       </div>
 
@@ -349,6 +342,7 @@ export default function App() {
           );
         })}
       </div>
+
     </div>
   );
 }

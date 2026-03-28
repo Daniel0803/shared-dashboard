@@ -44,8 +44,9 @@ const getColumns = () => {
 };
 
 // ===== UI =====
-const Card = ({ children, style }) => (
+const Card = ({ children, style, ...props }) => (
   <div
+    {...props}
     style={{
       background: "#0f172a",
       borderRadius: 12,
@@ -53,6 +54,7 @@ const Card = ({ children, style }) => (
       minHeight: window.innerWidth < 600 ? 90 : 120,
       fontSize: window.innerWidth < 600 ? 11 : 14,
       border: "1px solid rgba(255,255,255,0.05)",
+      transition: "0.2s",
       ...style,
     }}
   >
@@ -143,6 +145,22 @@ export default function App() {
     return `${day}/${m}/${y}`;
   };
 
+  // 🔥 SELECT DATE FEATURE
+  const handleSelectDate = (day) => {
+    if (!day) return;
+
+    const d = day.dateObj;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+
+    setForm((prev) => ({
+      ...prev,
+      date: `${yyyy}-${mm}-${dd}`,
+    }));
+  };
+
+  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -288,11 +306,7 @@ export default function App() {
       )}
 
       {/* WEEKDAY HEADER */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        marginBottom: 8
-      }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
           <div key={day} style={{ textAlign: "center", fontWeight: 700, fontSize: 12 }}>
             {day}
@@ -306,7 +320,14 @@ export default function App() {
           const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
           return (
-            <Card key={i} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
+            <Card
+              key={i}
+              style={{
+                border: isToday ? "2px solid #22c55e" : undefined,
+                cursor: day ? "pointer" : "default"
+              }}
+              onClick={() => handleSelectDate(day)}
+            >
               {day && (
                 <>
                   <div style={{ fontSize: 12, marginBottom: 6, color: isToday ? "#22c55e" : "white" }}>

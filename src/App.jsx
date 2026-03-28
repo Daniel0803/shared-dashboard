@@ -115,16 +115,18 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ UPDATED NAME HERE
   const users = {
-    Daniel: "0803",
+    "Daniël": "0803",
     Dillon: "2712",
     Marlon: "1004",
     Dellary: "2608",
     Marelly: "2811",
   };
 
+  // ✅ UPDATED NAME HERE
   const colors = {
-    Daniel: "#3b82f6",
+    "Daniël": "#3b82f6",
     Dillon: "#22c55e",
     Marlon: "#eab308",
     Dellary: "#ec4899",
@@ -287,7 +289,6 @@ export default function App() {
           <Input type="password" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
           <Button onClick={login}>Login</Button>
 
-          {/* 🔁 TOGGLE */}
           {currentUser && (
             <Button
               variant="secondary"

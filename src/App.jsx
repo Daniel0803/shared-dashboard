@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, push } from "firebase/database";
+import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAfDf9HXxty8UrVQNvlVKxx_ERT9VLClQU",
@@ -13,29 +13,41 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UI
-const Card = ({ children }) => (
+const Card = ({ children, style }) => (
   <div style={{
     background: "#0f172a",
     borderRadius: 12,
     padding: 10,
-    minHeight: 120
+    minHeight: 120,
+    border: "1px solid rgba(255,255,255,0.05)",
+    ...style
   }}>
     {children}
   </div>
 );
 
-const Button = ({ children, ...props }) => (
-  <button {...props} style={{
-    padding: "8px 12px",
-    borderRadius: 8,
-    border: "none",
-    background: "#22c55e",
-    fontWeight: 600,
-    cursor: "pointer"
-  }}>
-    {children}
-  </button>
-);
+const Button = ({ children, variant = "primary", ...props }) => {
+  const styles = {
+    primary: "#22c55e",
+    danger: "#ef4444",
+    secondary: "#334155"
+  };
+
+  return (
+    <button {...props} style={{
+      padding: "6px 10px",
+      borderRadius: 6,
+      border: "none",
+      background: styles[variant],
+      color: "white",
+      fontWeight: 600,
+      cursor: "pointer",
+      marginRight: 4
+    }}>
+      {children}
+    </button>
+  );
+};
 
 const Input = (props) => (
   <input {...props} style={{
@@ -52,7 +64,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [form, setForm] = useState({ date: "", time: "", title: "" });
-
+  const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const users = {
@@ -95,34 +107,61 @@ export default function App() {
     });
   }, []);
 
-  const addEvent = () => {
+  // ADD / UPDATE
+  const submitEvent = () => {
     if (!form.date || !form.time || !form.title) return;
 
-    push(ref(db, "events"), {
+    const payload = {
       ...form,
       date: formatDate(form.date),
       user: currentUser,
       createdAt: Date.now(),
-    });
+    };
+
+    if (editingId) {
+      update(ref(db, `events/${editingId}`), payload);
+      setEditingId(null);
+    } else {
+      push(ref(db, "events"), payload);
+    }
 
     setForm({ date: "", time: "", title: "" });
   };
 
-  // 📅 MONTH LOGIC
+  // EDIT
+  const handleEdit = (event) => {
+    if (event.user !== currentUser) return;
+
+    const [d, m, y] = event.date.split("/");
+    setForm({ date: `${y}-${m}-${d}`, time: event.time, title: event.title });
+    setEditingId(event.id);
+  };
+
+  // DELETE
+  const handleDelete = (event) => {
+    if (event.user !== currentUser) return;
+    remove(ref(db, `events/${event.id}`));
+  };
+
+  // MONTH NAV
+  const changeMonth = (offset) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + offset);
+    setCurrentDate(newDate);
+  };
+
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
   const daysInMonth = endOfMonth.getDate();
-  const startDay = startOfMonth.getDay(); // 0=Sunday
+  const startDay = startOfMonth.getDay();
+
+  const today = new Date();
 
   const calendarDays = [];
 
-  // empty slots before month starts
-  for (let i = 0; i < startDay; i++) {
-    calendarDays.push(null);
-  }
+  for (let i = 0; i < startDay; i++) calendarDays.push(null);
 
-  // actual days
   for (let i = 1; i <= daysInMonth; i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
     const dd = String(d.getDate()).padStart(2, "0");
@@ -153,72 +192,90 @@ export default function App() {
     <div style={{ padding: 20, background: "#020617", minHeight: "100vh", color: "white" }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
         <div>
-          <h1>🗓️ Balentina Schedule </h1>
+          <h1>🗓️ Balentina Schedule</h1>
           <div style={{ fontSize: 12, opacity: 0.7 }}>
             {currentUser ? `Logged in: ${currentUser}` : "Not logged in"}
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
           <Button onClick={login}>Login</Button>
         </div>
       </div>
 
-      {/* MONTH SELECTOR */}
+      {/* MONTH */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <Button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))}>◀</Button>
+        <Button onClick={() => changeMonth(-1)}>◀</Button>
         <h2>{monthName}</h2>
-        <Button onClick={() => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))}>▶</Button>
+        <Button onClick={() => changeMonth(1)}>▶</Button>
       </div>
 
       {/* INPUT */}
       {currentUser && (
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
           <Input type="time" value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})} />
           <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
-          <Button onClick={addEvent}>Add</Button>
+          <Button onClick={submitEvent}>{editingId ? "Update" : "Add"}</Button>
         </div>
       )}
 
-      {/* WEEKDAY HEADER */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 10 }}>
+      {/* WEEKDAYS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", marginBottom: 10 }}>
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
           <div key={d} style={{ textAlign: "center", fontWeight: 600 }}>{d}</div>
         ))}
       </div>
 
-      {/* CALENDAR GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
-        {calendarDays.map((day, i) => (
-          <Card key={i}>
-            {day && (
-              <>
-                <div style={{ fontSize: 12, marginBottom: 6 }}>
-                  {day.dateObj.getDate()}
-                </div>
+      {/* CALENDAR */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+        {calendarDays.map((day, i) => {
+          const isToday = day &&
+            day.dateObj.getDate() === today.getDate() &&
+            day.dateObj.getMonth() === today.getMonth() &&
+            day.dateObj.getFullYear() === today.getFullYear();
 
-                {grouped[day.key]?.map((e) => (
-                  <div key={e.id} style={{
-                    borderLeft: `4px solid ${colors[e.user]}`,
-                    padding: 6,
-                    marginBottom: 4,
-                    borderRadius: 6,
-                    background: "#020617"
+          return (
+            <Card key={i} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
+              {day && (
+                <>
+                  <div style={{
+                    fontSize: 12,
+                    marginBottom: 6,
+                    color: isToday ? "#22c55e" : "white",
+                    fontWeight: isToday ? 700 : 400
                   }}>
-                    <div style={{ fontSize: 12 }}>{e.title}</div>
-                    <div style={{ fontSize: 10 }}>{e.time}</div>
-                    <div style={{ fontSize: 9 }}>{e.user}</div>
+                    {day.dateObj.getDate()}
                   </div>
-                ))}
-              </>
-            )}
-          </Card>
-        ))}
+
+                  {grouped[day.key]?.map((e) => (
+                    <div key={e.id} style={{
+                      borderLeft: `4px solid ${colors[e.user]}`,
+                      padding: 6,
+                      marginBottom: 4,
+                      borderRadius: 6,
+                      background: "#020617"
+                    }}>
+                      <div style={{ fontSize: 12 }}>{e.title}</div>
+                      <div style={{ fontSize: 10 }}>{e.time}</div>
+                      <div style={{ fontSize: 9 }}>{e.user}</div>
+
+                      {currentUser === e.user && (
+                        <div style={{ marginTop: 4 }}>
+                          <Button variant="secondary" onClick={() => handleEdit(e)}>Edit</Button>
+                          <Button variant="danger" onClick={() => handleDelete(e)}>Delete</Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+            </Card>
+          );
+        })}
       </div>
 
     </div>

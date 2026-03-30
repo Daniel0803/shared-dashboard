@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 
@@ -36,8 +36,9 @@ const getColumns = () => {
 };
 
 // ===== UI =====
-const Card = ({ children, style, ...props }) => (
+const Card = React.forwardRef(({ children, style, ...props }, ref) => (
   <div
+    ref={ref}
     {...props}
     style={{
       background: "linear-gradient(145deg, #0f172a, #020617)",
@@ -54,7 +55,7 @@ const Card = ({ children, style, ...props }) => (
   >
     {children}
   </div>
-);
+));
 
 const Button = ({ children, variant = "primary", ...props }) => {
   const colors = {
@@ -95,6 +96,9 @@ export default function App() {
 
   const [form, setForm] = useState({ date: "", time: "", title: "" });
 
+  const todayRef = useRef(null);
+  const today = new Date();
+
   const users = {
     Daniel: "0803",
     Dillon: "2712",
@@ -110,8 +114,6 @@ export default function App() {
     Dellary: "#ec4899",
     Marelly: "#a855f7",
   };
-
-  const today = new Date();
 
   useEffect(() => {
     const handleResize = () => setColumns(getColumns());
@@ -174,6 +176,12 @@ export default function App() {
     setCurrentDate(d);
   };
 
+  const scrollToToday = () => {
+    if (todayRef.current) {
+      todayRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -215,25 +223,18 @@ export default function App() {
   };
 
   return (
-    <div style={{
-      padding: 12,
-      background: "radial-gradient(circle at top, #020617, #000)",
-      minHeight: "100vh",
-      color: "white"
-    }}>
+    <div style={{ padding: 12, background: "#000", minHeight: "100vh", color: "white" }}>
 
       {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 700 }}>🗓️ Balentina</div>
-          <div style={{ fontSize: 14, opacity: 0.6 }}>Schedule</div>
+          <div style={{ opacity: 0.6 }}>Schedule</div>
         </div>
 
         {currentUser && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ color: colors[currentUser], fontWeight: 600 }}>
-              {currentUser}
-            </div>
+            <div style={{ color: colors[currentUser] }}>{currentUser}</div>
 
             <button
               onClick={logout}
@@ -243,8 +244,6 @@ export default function App() {
                 border: "none",
                 background: "#ef4444",
                 color: "white",
-                fontSize: 12,
-                fontWeight: 600,
                 cursor: "pointer"
               }}
               onMouseOver={(e) => e.currentTarget.style.background = "#dc2626"}
@@ -256,8 +255,25 @@ export default function App() {
         )}
       </div>
 
+      {/* TODAY BUTTON */}
+      <div style={{ textAlign: "center", marginBottom: 10 }}>
+        <button
+          onClick={scrollToToday}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 20,
+            border: "none",
+            background: "#22c55e",
+            color: "white",
+            cursor: "pointer"
+          }}
+        >
+          Go to Today
+        </button>
+      </div>
+
       {/* MONTH */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
         <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
         <button style={navBtn} onClick={() => changeMonth(1)}>▶</button>
@@ -271,6 +287,7 @@ export default function App() {
           return (
             <Card
               key={i}
+              ref={isToday ? todayRef : null}
               onClick={() => {
                 if (!day || !currentUser) return;
                 setForm({ date: day.key, time: "", title: "" });
@@ -284,27 +301,13 @@ export default function App() {
             >
               {day && (
                 <>
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                  <div style={{ fontWeight: 600 }}>
                     {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
                   </div>
 
                   {grouped[day.key]?.map(event => (
-                    <div
-                      key={event.id}
-                      onClick={(e) => handleEventClick(e, event)}
-                      style={{
-                        borderLeft: `3px solid ${colors[event.user]}`,
-                        padding: 6,
-                        marginBottom: 6,
-                        borderRadius: 6,
-                        background: "rgba(255,255,255,0.03)"
-                      }}
-                    >
-                      <div>{event.title}</div>
-                      <div style={{ fontSize: 11 }}>{formatTime(event.time)}</div>
-                      <div style={{ fontSize: 10, color: colors[event.user] }}>
-                        {event.user}
-                      </div>
+                    <div key={event.id} onClick={(e)=>handleEventClick(e,event)}>
+                      {event.title}
                     </div>
                   ))}
                 </>
@@ -318,16 +321,10 @@ export default function App() {
       {showLoginModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)",
-          display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"
         }}>
           <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <input
-              type="password"
-              placeholder="Enter PIN"
-              value={pinInput}
-              onChange={e=>setPinInput(e.target.value)}
-            />
+            <input value={pinInput} onChange={e=>setPinInput(e.target.value)} />
             <Button onClick={login}>Login</Button>
           </div>
         </div>
@@ -337,40 +334,14 @@ export default function App() {
       {showModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.6)",
-          display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"
         }}>
           <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <h3>{editingId ? "Edit Event" : "Add Event"}</h3>
-
-            <div>Date: {form.date}</div>
-
-            <select value={form.time} onChange={e=>setForm({...form,time:e.target.value})}>
-              <option value="">Select time</option>
-              {timeOptions.map(t=>(
-                <option key={t} value={t}>{formatTime(t)}</option>
-              ))}
+            <select onChange={e=>setForm({...form,time:e.target.value})}>
+              {timeOptions.map(t=><option key={t}>{t}</option>)}
             </select>
-
-            <input
-              placeholder="Note"
-              value={form.title}
-              onChange={e=>setForm({...form,title:e.target.value})}
-            />
-
-            <Button onClick={submitEvent}>
-              {editingId ? "Update" : "Save"}
-            </Button>
-
-            {editingId && (
-              <Button variant="danger" onClick={handleDelete}>
-                Delete
-              </Button>
-            )}
-
-            <Button variant="danger" onClick={()=>setShowModal(false)}>
-              Cancel
-            </Button>
+            <input onChange={e=>setForm({...form,title:e.target.value})}/>
+            <Button onClick={submitEvent}>Save</Button>
           </div>
         </div>
       )}

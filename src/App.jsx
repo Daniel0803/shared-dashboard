@@ -59,7 +59,6 @@ const Button = ({ children, variant = "primary", ...props }) => {
   const colors = {
     primary: "#22c55e",
     danger: "#ef4444",
-    secondary: "#334155"
   };
 
   return (
@@ -163,7 +162,7 @@ export default function App() {
     setForm({ date: "", time: "", title: "" });
   };
 
-  const handleEdit = (e, event) => {
+  const handleEventClick = (e, event) => {
     e.stopPropagation();
 
     if (event.user !== currentUser) return;
@@ -178,12 +177,9 @@ export default function App() {
     setShowModal(true);
   };
 
-  const handleDelete = (e, event) => {
-    e.stopPropagation();
-
-    if (event.user !== currentUser) return;
-
-    remove(ref(db, `events/${event.id}`));
+  const handleDelete = () => {
+    remove(ref(db, `events/${editingId}`));
+    setShowModal(false);
   };
 
   const changeMonth = (offset) => {
@@ -239,6 +235,7 @@ export default function App() {
   return (
     <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
 
+      {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h1>🗓️ Balentina Schedule</h1>
 
@@ -262,12 +259,14 @@ export default function App() {
         )}
       </div>
 
+      {/* MONTH */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
         <Button onClick={() => changeMonth(-1)}>◀</Button>
         <h2>{monthName}</h2>
         <Button onClick={() => changeMonth(1)}>▶</Button>
       </div>
 
+      {/* CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
         {calendarDays.map((day, i) => {
           const isToday = day && day.dateObj.toDateString() === today.toDateString();
@@ -281,21 +280,19 @@ export default function App() {
                   </div>
 
                   {grouped[day.key]?.map(event => (
-                    <div key={event.id} style={{
-                      borderLeft: `4px solid ${colors[event.user]}`,
-                      padding: 4,
-                      marginBottom: 4
-                    }}>
+                    <div
+                      key={event.id}
+                      onClick={(e) => handleEventClick(e, event)}
+                      style={{
+                        borderLeft: `4px solid ${colors[event.user]}`,
+                        padding: 4,
+                        marginBottom: 4,
+                        cursor: "pointer"
+                      }}
+                    >
                       <div>{event.title}</div>
                       <div>{formatTime(event.time)}</div>
                       <div style={{ color: colors[event.user] }}>{event.user}</div>
-
-                      {event.user === currentUser && (
-                        <>
-                          <Button variant="secondary" onClick={(e)=>handleEdit(e, event)}>Edit</Button>
-                          <Button variant="danger" onClick={(e)=>handleDelete(e, event)}>Del</Button>
-                        </>
-                      )}
                     </div>
                   ))}
                 </>
@@ -305,6 +302,7 @@ export default function App() {
         })}
       </div>
 
+      {/* MODAL */}
       {showModal && (
         <div style={{
           position: "fixed", top:0,left:0,width:"100%",height:"100%",
@@ -322,26 +320,26 @@ export default function App() {
               ))}
             </select>
 
-            <div style={{ marginTop:10 }}>
-              <input
-                placeholder="Note"
-                value={form.title}
-                onChange={(e)=>setForm({...form,title:e.target.value})}
-                style={{ width:"100%", marginBottom:5 }}
-              />
-
-              {recentNotes.map((note,i)=>(
-                <div key={i} onClick={()=>setForm({...form,title:note})}
-                  style={{ padding:5,cursor:"pointer",background:"#020617",marginBottom:2 }}>
-                  {note}
-                </div>
-              ))}
-            </div>
+            <input
+              placeholder="Note"
+              value={form.title}
+              onChange={(e)=>setForm({...form,title:e.target.value})}
+              style={{ width:"100%", marginTop:10 }}
+            />
 
             <Button onClick={submitEvent}>
               {editingId ? "Update" : "Save"}
             </Button>
-            <Button variant="danger" onClick={()=>setShowModal(false)}>Cancel</Button>
+
+            {editingId && (
+              <Button variant="danger" onClick={handleDelete}>
+                Delete
+              </Button>
+            )}
+
+            <Button variant="danger" onClick={()=>setShowModal(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}

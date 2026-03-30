@@ -96,6 +96,8 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ date: "", time: "", title: "" });
 
+  const [recentNotes, setRecentNotes] = useState([]);
+
   const users = {
     Daniel: "0803",
     Dillon: "2712",
@@ -117,6 +119,13 @@ export default function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // LOAD NOTES PER USER
+  useEffect(() => {
+    if (!currentUser) return;
+    const saved = JSON.parse(localStorage.getItem(`notes_${currentUser}`)) || [];
+    setRecentNotes(saved);
+  }, [currentUser]);
 
   // LOGIN
   const login = () => {
@@ -150,6 +159,13 @@ export default function App() {
       user: currentUser,
       createdAt: Date.now(),
     });
+
+    // SAVE LAST 10 NOTES
+    let updated = [form.title, ...recentNotes.filter(n => n !== form.title)];
+    updated = updated.slice(0, 10);
+
+    setRecentNotes(updated);
+    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updated));
 
     setShowModal(false);
     setForm({ date: "", time: "", title: "" });
@@ -292,8 +308,8 @@ export default function App() {
         }}>
           <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, width: 300 }}>
             <h3>Add Event</h3>
-            <div style={{ marginBottom: 10 }}>User: {currentUser}</div>
-            <div style={{ marginBottom: 10 }}>Date: {form.date}</div>
+            <div>User: {currentUser}</div>
+            <div>Date: {form.date}</div>
 
             <select
               value={form.time}
@@ -306,12 +322,39 @@ export default function App() {
               ))}
             </select>
 
-            <input
-              placeholder="Note"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              style={{ width: "100%", marginBottom: 10 }}
-            />
+            {/* NOTE INPUT + DROPDOWN */}
+            <div style={{ marginBottom: 10 }}>
+              <input
+                placeholder="Note"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                style={{ width: "100%", marginBottom: 5 }}
+              />
+
+              {recentNotes.length > 0 && (
+                <div style={{
+                  background: "#020617",
+                  border: "1px solid #334155",
+                  borderRadius: 6,
+                  maxHeight: 120,
+                  overflowY: "auto",
+                }}>
+                  {recentNotes.map((note, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setForm({ ...form, title: note })}
+                      style={{
+                        padding: 6,
+                        cursor: "pointer",
+                        borderBottom: "1px solid #1e293b",
+                      }}
+                    >
+                      {note}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <Button onClick={submitEvent}>Save</Button>
             <Button variant="danger" onClick={() => setShowModal(false)}>

@@ -148,9 +148,12 @@ export default function App() {
   const handleSelectDate = (day) => {
     if (!day) return;
     const d = day.dateObj;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getDate()).padStart(2, "0")}`,
     }));
   };
 
@@ -211,12 +214,19 @@ export default function App() {
     setCurrentDate(newDate);
   };
 
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const startOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
+  const endOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  );
 
   const daysInMonth = endOfMonth.getDate();
   const startDay = startOfMonth.getDay();
-
   const today = new Date();
 
   const calendarDays = [];
@@ -224,7 +234,11 @@ export default function App() {
   for (let i = 0; i < startDay; i++) calendarDays.push(null);
 
   for (let i = 1; i <= daysInMonth; i++) {
-    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+    const d = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      i
+    );
 
     const dd = String(d.getDate()).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -251,10 +265,24 @@ export default function App() {
   });
 
   return (
-    <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
-
+    <div
+      style={{
+        padding: 15,
+        background: "#020617",
+        minHeight: "100vh",
+        color: "white",
+      }}
+    >
       {/* HEADER */}
-      <div style={{ display: "flex", flexDirection: columns === 2 ? "column" : "row", justifyContent: "space-between", gap: 10, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: columns === 2 ? "column" : "row",
+          justifyContent: "space-between",
+          gap: 10,
+          marginBottom: 20,
+        }}
+      >
         <div>
           <h1>🗓️ Balentina Schedule</h1>
           <div style={{ fontSize: 12, opacity: 0.7 }}>
@@ -263,13 +291,25 @@ export default function App() {
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
-          <Input type="password" placeholder="PIN" value={pinInput} onChange={(e)=>setPinInput(e.target.value)} />
+          <Input
+            type="password"
+            placeholder="PIN"
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value)}
+          />
           <Button onClick={login}>Login</Button>
         </div>
       </div>
 
       {/* MONTH */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 20,
+          marginBottom: 20,
+        }}
+      >
         <Button onClick={() => changeMonth(-1)}>◀</Button>
         <h2>{monthName}</h2>
         <Button onClick={() => changeMonth(1)}>▶</Button>
@@ -277,17 +317,43 @@ export default function App() {
 
       {/* INPUT */}
       {currentUser && (
-        <div style={{ marginBottom: 20, display: "flex", flexDirection: columns === 2 ? "column" : "row", gap: 10 }}>
-          <Input type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} />
+        <div
+          style={{
+            marginBottom: 20,
+            display: "flex",
+            flexDirection: columns === 2 ? "column" : "row",
+            gap: 10,
+          }}
+        >
+          <Input
+            type="date"
+            value={form.date}
+            onChange={(e) =>
+              setForm({ ...form, date: e.target.value })
+            }
+          />
 
-          <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
+          <select
+            value={form.time}
+            onChange={(e) =>
+              setForm({ ...form, time: e.target.value })
+            }
+          >
             <option value="">Select time</option>
-            {timeOptions.map(t => (
-              <option key={t} value={t}>{formatTime(t)}</option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>
+                {formatTime(t)}
+              </option>
             ))}
           </select>
 
-          <Input placeholder="Note" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} />
+          <Input
+            placeholder="Note"
+            value={form.title}
+            onChange={(e) =>
+              setForm({ ...form, title: e.target.value })
+            }
+          />
 
           <Button onClick={submitEvent}>
             {editingId ? "Update" : "Add"}
@@ -295,39 +361,75 @@ export default function App() {
         </div>
       )}
 
-      {/* WEEKDAY HEADER */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 }}>
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day => (
-          <div key={day} style={{ textAlign: "center", fontWeight: 700 }}>
-            {day}
-          </div>
-        ))}
-      </div>
-
       {/* CALENDAR */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gap: 10,
+        }}
+      >
         {calendarDays.map((day, i) => {
-          const isToday = day && day.dateObj.toDateString() === today.toDateString();
+          const isToday =
+            day &&
+            day.dateObj.toDateString() === today.toDateString();
 
           return (
-            <Card key={i} onClick={()=>handleSelectDate(day)} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
+            <Card
+              key={i}
+              onClick={() => handleSelectDate(day)}
+              style={{
+                border: isToday ? "2px solid #22c55e" : undefined,
+              }}
+            >
               {day && (
                 <>
-                  <div>{day.dateObj.getDate()}</div>
+                  {/* UPDATED HEADER INSIDE CARD */}
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize:
+                        window.innerWidth < 600 ? 13 : 16,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {day.dateObj.toLocaleDateString("en-US", {
+                      weekday: "short",
+                    })}{" "}
+                    - {day.dateObj.getDate()}
+                  </div>
 
                   {grouped[day.key]
                     ?.slice()
-                    .sort((a, b) => a.time.localeCompare(b.time))
-                    .map(e => (
-                      <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 4, marginBottom: 4 }}>
+                    .sort((a, b) =>
+                      a.time.localeCompare(b.time)
+                    )
+                    .map((e) => (
+                      <div
+                        key={e.id}
+                        style={{
+                          borderLeft: `4px solid ${colors[e.user]}`,
+                          padding: 4,
+                          marginBottom: 4,
+                        }}
+                      >
                         <div>{e.title}</div>
                         <div>{formatTime(e.time)}</div>
-                        <div style={{ color: colors[e.user] }}>{e.user}</div>
+                        <div style={{ color: colors[e.user] }}>
+                          {e.user}
+                        </div>
 
                         {currentUser === e.user && (
                           <>
-                            <Button onClick={()=>handleEdit(e)}>Edit</Button>
-                            <Button variant="danger" onClick={()=>handleDelete(e)}>Del</Button>
+                            <Button onClick={() => handleEdit(e)}>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              onClick={() => handleDelete(e)}
+                            >
+                              Del
+                            </Button>
                           </>
                         )}
                       </div>
@@ -338,7 +440,6 @@ export default function App() {
           );
         })}
       </div>
-
     </div>
   );
 }

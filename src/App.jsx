@@ -13,17 +13,12 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // ===== TIME OPTIONS =====
-const generateTimeOptions = () => {
-  const times = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m of [0, 30]) {
-      times.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
+const timeOptions = [];
+for (let h = 0; h < 24; h++) {
+  for (let m of [0, 30]) {
+    timeOptions.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
   }
-  return times;
-};
-
-const timeOptions = generateTimeOptions();
+}
 
 const formatTime = (time) => {
   if (!time) return "";
@@ -40,17 +35,21 @@ const getColumns = () => {
   return 7;
 };
 
+// ===== UI =====
 const Card = ({ children, style, ...props }) => (
-  <div {...props} style={{
-    background: "#0f172a",
-    borderRadius: 12,
-    padding: 8,
-    minHeight: window.innerWidth < 600 ? 90 : 120,
-    fontSize: window.innerWidth < 600 ? 11 : 14,
-    border: "1px solid rgba(255,255,255,0.05)",
-    cursor: "pointer",
-    ...style,
-  }}>
+  <div
+    {...props}
+    style={{
+      background: "#0f172a",
+      borderRadius: 12,
+      padding: 8,
+      minHeight: window.innerWidth < 600 ? 90 : 120,
+      fontSize: window.innerWidth < 600 ? 11 : 14,
+      border: "1px solid rgba(255,255,255,0.05)",
+      cursor: "pointer",
+      ...style,
+    }}
+  >
     {children}
   </div>
 );
@@ -62,16 +61,19 @@ const Button = ({ children, variant = "primary", ...props }) => {
   };
 
   return (
-    <button {...props} style={{
-      padding: "6px 10px",
-      borderRadius: 6,
-      border: "none",
-      background: colors[variant],
-      color: "white",
-      fontWeight: 600,
-      cursor: "pointer",
-      marginRight: 4,
-    }}>
+    <button
+      {...props}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 6,
+        border: "none",
+        background: colors[variant],
+        color: "white",
+        fontWeight: 600,
+        cursor: "pointer",
+        marginRight: 4,
+      }}
+    >
       {children}
     </button>
   );
@@ -84,11 +86,10 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-
-  const [showLoginModal, setShowLoginModal] = useState(true);
 
   const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [recentNotes, setRecentNotes] = useState([]);
@@ -123,7 +124,7 @@ export default function App() {
 
   // LOGIN
   const login = () => {
-    const user = Object.keys(users).find(u => users[u] === pinInput);
+    const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
@@ -161,9 +162,9 @@ export default function App() {
       });
     }
 
-    let updatedNotes = [form.title, ...recentNotes.filter(n => n !== form.title)].slice(0, 10);
-    setRecentNotes(updatedNotes);
-    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updatedNotes));
+    let updated = [form.title, ...recentNotes.filter(n => n !== form.title)].slice(0, 10);
+    setRecentNotes(updated);
+    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updated));
 
     setShowModal(false);
     setEditingId(null);
@@ -222,7 +223,7 @@ export default function App() {
   }, [events]);
 
   const openModal = (day) => {
-    if (!day) return;
+    if (!day || !currentUser) return;
     setForm({ date: day.key, time: "", title: "" });
     setEditingId(null);
     setShowModal(true);
@@ -235,7 +236,7 @@ export default function App() {
 
   return (
     <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
-
+      
       {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h1>🗓️ Balentina Schedule</h1>

@@ -35,18 +35,19 @@ const getColumns = () => {
   return 7;
 };
 
-// ===== UI =====
+// ===== UI COMPONENTS =====
 const Card = ({ children, style, ...props }) => (
   <div
     {...props}
     style={{
-      background: "#0f172a",
-      borderRadius: 12,
-      padding: 8,
-      minHeight: window.innerWidth < 600 ? 90 : 120,
-      fontSize: window.innerWidth < 600 ? 11 : 14,
+      background: "linear-gradient(145deg, #0f172a, #020617)",
+      borderRadius: 16,
+      padding: 10,
+      minHeight: 100,
+      fontSize: 13,
       border: "1px solid rgba(255,255,255,0.05)",
-      cursor: "pointer",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+      transition: "0.2s",
       ...style,
     }}
   >
@@ -65,7 +66,7 @@ const Button = ({ children, variant = "primary", ...props }) => {
       {...props}
       style={{
         padding: "6px 10px",
-        borderRadius: 6,
+        borderRadius: 8,
         border: "none",
         background: colors[variant],
         color: "white",
@@ -122,7 +123,6 @@ export default function App() {
     setRecentNotes(saved);
   }, [currentUser]);
 
-  // LOGIN
   const login = () => {
     const user = Object.keys(users).find((u) => users[u] === pinInput);
     if (user) {
@@ -137,7 +137,6 @@ export default function App() {
     setShowLoginModal(true);
   };
 
-  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -234,27 +233,67 @@ export default function App() {
     year: "numeric",
   });
 
+  const navBtn = {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    border: "none",
+    background: "#22c55e",
+    color: "white",
+    fontSize: 16,
+    cursor: "pointer"
+  };
+
   return (
-    <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
-      
+    <div style={{
+      padding: 12,
+      background: "radial-gradient(circle at top, #020617, #000)",
+      minHeight: "100vh",
+      color: "white"
+    }}>
+
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1>🗓️ Balentina Schedule</h1>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 20
+      }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>🗓️ Balentina</div>
+          <div style={{ fontSize: 14, opacity: 0.6 }}>Schedule</div>
+        </div>
+
         {currentUser && (
-          <>
-            <div style={{ color: colors[currentUser], fontWeight: 700 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ color: colors[currentUser], fontWeight: 600 }}>
               {currentUser}
             </div>
-            <Button variant="danger" onClick={logout}>Logout</Button>
-          </>
+            <button onClick={logout} style={{
+              padding: "6px 12px",
+              borderRadius: 20,
+              border: "none",
+              background: "#ef4444",
+              color: "white",
+              fontSize: 12
+            }}>
+              Logout
+            </button>
+          </div>
         )}
       </div>
 
       {/* MONTH */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <Button onClick={() => changeMonth(-1)}>◀</Button>
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 20,
+        marginBottom: 20
+      }}>
+        <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
-        <Button onClick={() => changeMonth(1)}>▶</Button>
+        <button style={navBtn} onClick={() => changeMonth(1)}>▶</button>
       </div>
 
       {/* CALENDAR */}
@@ -266,7 +305,7 @@ export default function App() {
             <Card key={i} onClick={() => openModal(day)} style={{ border: isToday ? "2px solid #22c55e" : undefined }}>
               {day && (
                 <>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
                     {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
                   </div>
 
@@ -275,15 +314,16 @@ export default function App() {
                       key={event.id}
                       onClick={(e) => handleEventClick(e, event)}
                       style={{
-                        borderLeft: `4px solid ${colors[event.user]}`,
-                        padding: 4,
-                        marginBottom: 4,
-                        cursor: "pointer"
+                        borderLeft: `3px solid ${colors[event.user]}`,
+                        padding: "6px 8px",
+                        marginBottom: 6,
+                        borderRadius: 6,
+                        background: "rgba(255,255,255,0.03)",
+                        fontSize: 12
                       }}
                     >
                       <div>{event.title}</div>
                       <div>{formatTime(event.time)}</div>
-                      <div style={{ color: colors[event.user] }}>{event.user}</div>
                     </div>
                   ))}
                 </>
@@ -303,7 +343,6 @@ export default function App() {
         }}>
           <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:280 }}>
             <h3>Login</h3>
-
             <input
               type="password"
               placeholder="Enter PIN"
@@ -311,7 +350,6 @@ export default function App() {
               onChange={(e)=>setPinInput(e.target.value)}
               style={{ width:"100%", marginBottom:10 }}
             />
-
             <Button onClick={login}>Login</Button>
           </div>
         </div>

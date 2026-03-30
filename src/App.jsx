@@ -230,14 +230,26 @@ export default function App() {
         </div>
 
         {currentUser && (
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ color: colors[currentUser] }}>{currentUser}</div>
-            <button onClick={logout} style={{
-              padding: "6px 12px",
-              borderRadius: 20,
-              background: "#ef4444",
-              color: "white"
-            }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ color: colors[currentUser], fontWeight: 600 }}>
+              {currentUser}
+            </div>
+
+            <button
+              onClick={logout}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 20,
+                border: "none",
+                background: "#ef4444",
+                color: "white",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = "#dc2626"}
+              onMouseOut={(e) => e.currentTarget.style.background = "#ef4444"}
+            >
               Logout
             </button>
           </div>
@@ -259,7 +271,12 @@ export default function App() {
           return (
             <Card
               key={i}
-              onClick={() => day && setForm({ date: day.key, time: "", title: "" }) || setShowModal(true)}
+              onClick={() => {
+                if (!day || !currentUser) return;
+                setForm({ date: day.key, time: "", title: "" });
+                setEditingId(null);
+                setShowModal(true);
+              }}
               style={{
                 border: isToday ? "2px solid #22c55e" : undefined,
                 boxShadow: isToday ? "0 0 12px rgba(34,197,94,0.6)" : undefined
@@ -279,6 +296,7 @@ export default function App() {
                         borderLeft: `3px solid ${colors[event.user]}`,
                         padding: 6,
                         marginBottom: 6,
+                        borderRadius: 6,
                         background: "rgba(255,255,255,0.03)"
                       }}
                     >
@@ -300,10 +318,16 @@ export default function App() {
       {showLoginModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.8)",
+          display:"flex",alignItems:"center",justifyContent:"center"
         }}>
           <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <input value={pinInput} onChange={e=>setPinInput(e.target.value)} />
+            <input
+              type="password"
+              placeholder="Enter PIN"
+              value={pinInput}
+              onChange={e=>setPinInput(e.target.value)}
+            />
             <Button onClick={login}>Login</Button>
           </div>
         </div>
@@ -313,14 +337,40 @@ export default function App() {
       {showModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"center",justifyContent:"center"
         }}>
           <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <select onChange={e=>setForm({...form,time:e.target.value})}>
-              {timeOptions.map(t=><option key={t}>{t}</option>)}
+            <h3>{editingId ? "Edit Event" : "Add Event"}</h3>
+
+            <div>Date: {form.date}</div>
+
+            <select value={form.time} onChange={e=>setForm({...form,time:e.target.value})}>
+              <option value="">Select time</option>
+              {timeOptions.map(t=>(
+                <option key={t} value={t}>{formatTime(t)}</option>
+              ))}
             </select>
-            <input onChange={e=>setForm({...form,title:e.target.value})}/>
-            <Button onClick={submitEvent}>Save</Button>
+
+            <input
+              placeholder="Note"
+              value={form.title}
+              onChange={e=>setForm({...form,title:e.target.value})}
+            />
+
+            <Button onClick={submitEvent}>
+              {editingId ? "Update" : "Save"}
+            </Button>
+
+            {editingId && (
+              <Button variant="danger" onClick={handleDelete}>
+                Delete
+              </Button>
+            )}
+
+            <Button variant="danger" onClick={()=>setShowModal(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
       )}

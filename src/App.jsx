@@ -47,7 +47,7 @@ const Card = ({ children, style, ...props }) => (
       fontSize: 13,
       border: "1px solid rgba(255,255,255,0.05)",
       boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-      transition: "0.2s",
+      cursor: "pointer",
       ...style,
     }}
   >
@@ -72,7 +72,7 @@ const Button = ({ children, variant = "primary", ...props }) => {
         color: "white",
         fontWeight: 600,
         cursor: "pointer",
-        marginRight: 4,
+        marginTop: 8
       }}
     >
       {children}
@@ -93,7 +93,6 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({ date: "", time: "", title: "" });
-  const [recentNotes, setRecentNotes] = useState([]);
 
   const users = {
     Daniel: "0803",
@@ -117,14 +116,18 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // FIREBASE
   useEffect(() => {
-    if (!currentUser) return;
-    const saved = JSON.parse(localStorage.getItem(`notes_${currentUser}`)) || [];
-    setRecentNotes(saved);
-  }, [currentUser]);
+    const eventsRef = ref(db, "events");
+    onValue(eventsRef, (snap) => {
+      const data = snap.val() || {};
+      setEvents(Object.entries(data).map(([id, val]) => ({ id, ...val })));
+    });
+  }, []);
 
+  // LOGIN
   const login = () => {
-    const user = Object.keys(users).find((u) => users[u] === pinInput);
+    const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
@@ -136,14 +139,6 @@ export default function App() {
     setCurrentUser(null);
     setShowLoginModal(true);
   };
-
-  useEffect(() => {
-    const eventsRef = ref(db, "events");
-    onValue(eventsRef, (snap) => {
-      const data = snap.val() || {};
-      setEvents(Object.entries(data).map(([id, val]) => ({ id, ...val })));
-    });
-  }, []);
 
   const submitEvent = () => {
     if (!form.time || !form.title) return;
@@ -161,10 +156,6 @@ export default function App() {
       });
     }
 
-    let updated = [form.title, ...recentNotes.filter(n => n !== form.title)].slice(0, 10);
-    setRecentNotes(updated);
-    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updated));
-
     setShowModal(false);
     setEditingId(null);
     setForm({ date: "", time: "", title: "" });
@@ -174,12 +165,7 @@ export default function App() {
     e.stopPropagation();
     if (event.user !== currentUser) return;
 
-    setForm({
-      date: event.date,
-      time: event.time,
-      title: event.title,
-    });
-
+    setForm(event);
     setEditingId(event.id);
     setShowModal(true);
   };
@@ -208,7 +194,7 @@ export default function App() {
 
   for (let i = 1; i <= daysInMonth; i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-    const key = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
     calendarDays.push({ key, dateObj: d });
   }
 
@@ -304,10 +290,7 @@ export default function App() {
                       padding: "6px 8px",
                       marginBottom: 6,
                       borderRadius: 6,
-                      background: "rgba(255,255,255,0.03)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 2
+                      background: "rgba(255,255,255,0.03)"
                     }}
                   >
                     <div>{event.title}</div>
@@ -315,7 +298,6 @@ export default function App() {
                       {formatTime(event.time)}
                     </div>
 
-                    {/* USER BADGE */}
                     <div style={{
                       fontSize: 10,
                       marginTop: 4,
@@ -324,8 +306,7 @@ export default function App() {
                       borderRadius: 6,
                       background: "rgba(255,255,255,0.05)",
                       color: colors[event.user],
-                      fontWeight: 600,
-                      width: "fit-content"
+                      fontWeight: 600
                     }}>
                       {event.user}
                     </div>
@@ -337,7 +318,67 @@ export default function App() {
         ))}
       </div>
 
-      {/* LOGIN + MODAL SAME AS BEFORE */}
+      {/* LOGIN MODAL */}
+      {showLoginModal && (
+        <div style={{
+          position:"fixed",top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.8)",
+          display:"flex",alignItems:"center",justifyContent:"center"
+        }}>
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:280 }}>
+            <h3>Login</h3>
+            <input
+              type="password"
+              placeholder="Enter PIN"
+              value={pinInput}
+              onChange={(e)=>setPinInput(e.target.value)}
+              style={{ width:"100%", marginBottom:10 }}
+            />
+            <Button onClick={login}>Login</Button>
+          </div>
+        </div>
+      )}
+
+      {/* EVENT MODAL */}
+      {showModal && (
+        <div style={{
+          position:"fixed",top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"center",justifyContent:"center"
+        }}>
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:300 }}>
+            <h3>{editingId ? "Edit Event" : "Add Event"}</h3>
+            <div>Date: {form.date}</div>
+
+            <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
+              <option value="">Select time</option>
+              {timeOptions.map(t=>(
+                <option key={t} value={t}>{formatTime(t)}</option>
+              ))}
+            </select>
+
+            <input
+              placeholder="Note"
+              value={form.title}
+              onChange={(e)=>setForm({...form,title:e.target.value})}
+              style={{ width:"100%", marginTop:10 }}
+            />
+
+            <Button onClick={submitEvent}>
+              {editingId ? "Update" : "Save"}
+            </Button>
+
+            {editingId && (
+              <Button variant="danger" onClick={handleDelete}>Delete</Button>
+            )}
+
+            <Button variant="danger" onClick={()=>setShowModal(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

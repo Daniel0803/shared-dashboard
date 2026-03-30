@@ -48,6 +48,7 @@ const Card = ({ children, style, ...props }) => (
       border: "1px solid rgba(255,255,255,0.05)",
       boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
       cursor: "pointer",
+      transition: "0.2s",
       ...style,
     }}
   >
@@ -110,13 +111,14 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
+  const today = new Date();
+
   useEffect(() => {
     const handleResize = () => setColumns(getColumns());
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -125,7 +127,6 @@ export default function App() {
     });
   }, []);
 
-  // LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -144,16 +145,9 @@ export default function App() {
     if (!form.time || !form.title) return;
 
     if (editingId) {
-      update(ref(db, `events/${editingId}`), {
-        ...form,
-        user: currentUser,
-      });
+      update(ref(db, `events/${editingId}`), { ...form, user: currentUser });
     } else {
-      push(ref(db, "events"), {
-        ...form,
-        user: currentUser,
-        createdAt: Date.now(),
-      });
+      push(ref(db, "events"), { ...form, user: currentUser, createdAt: Date.now() });
     }
 
     setShowModal(false);
@@ -164,7 +158,6 @@ export default function App() {
   const handleEventClick = (e, event) => {
     e.stopPropagation();
     if (event.user !== currentUser) return;
-
     setForm(event);
     setEditingId(event.id);
     setShowModal(true);
@@ -176,23 +169,18 @@ export default function App() {
   };
 
   const changeMonth = (offset) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + offset);
-    setCurrentDate(newDate);
+    const d = new Date(currentDate);
+    d.setMonth(currentDate.getMonth() + offset);
+    setCurrentDate(d);
   };
 
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-  const daysInMonth = endOfMonth.getDate();
-  const startDay = startOfMonth.getDay();
-  const today = new Date();
+  const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
   const calendarDays = [];
+  for (let i = 0; i < start.getDay(); i++) calendarDays.push(null);
 
-  for (let i = 0; i < startDay; i++) calendarDays.push(null);
-
-  for (let i = 1; i <= daysInMonth; i++) {
+  for (let i = 1; i <= end.getDate(); i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
     const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
     calendarDays.push({ key, dateObj: d });
@@ -207,28 +195,10 @@ export default function App() {
     return g;
   }, [events]);
 
-  const openModal = (day) => {
-    if (!day || !currentUser) return;
-    setForm({ date: day.key, time: "", title: "" });
-    setEditingId(null);
-    setShowModal(true);
-  };
-
   const monthName = currentDate.toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
   });
-
-  const navBtn = {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    border: "none",
-    background: "#22c55e",
-    color: "white",
-    fontSize: 16,
-    cursor: "pointer"
-  };
 
   return (
     <div style={{
@@ -246,17 +216,13 @@ export default function App() {
         </div>
 
         {currentUser && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ color: colors[currentUser], fontWeight: 600 }}>
-              {currentUser}
-            </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ color: colors[currentUser] }}>{currentUser}</div>
             <button onClick={logout} style={{
               padding: "6px 12px",
               borderRadius: 20,
-              border: "none",
               background: "#ef4444",
-              color: "white",
-              fontSize: 12
+              color: "white"
             }}>
               Logout
             </button>
@@ -266,74 +232,65 @@ export default function App() {
 
       {/* MONTH */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
+        <button onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
-        <button style={navBtn} onClick={() => changeMonth(1)}>▶</button>
+        <button onClick={() => changeMonth(1)}>▶</button>
       </div>
 
       {/* CALENDAR */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
-        {calendarDays.map((day, i) => (
-          <Card key={i} onClick={() => openModal(day)}>
-            {day && (
-              <>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                  {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
-                </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns},1fr)`, gap: 10 }}>
+        {calendarDays.map((day, i) => {
+          const isToday =
+            day && day.dateObj.toDateString() === today.toDateString();
 
-                {grouped[day.key]?.map(event => (
-                  <div
-                    key={event.id}
-                    onClick={(e) => handleEventClick(e, event)}
-                    style={{
-                      borderLeft: `3px solid ${colors[event.user]}`,
-                      padding: "6px 8px",
-                      marginBottom: 6,
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.03)"
-                    }}
-                  >
-                    <div>{event.title}</div>
-                    <div style={{ fontSize: 11, opacity: 0.7 }}>
-                      {formatTime(event.time)}
-                    </div>
-
-                    <div style={{
-                      fontSize: 10,
-                      marginTop: 4,
-                      display: "inline-block",
-                      padding: "2px 6px",
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.05)",
-                      color: colors[event.user],
-                      fontWeight: 600
-                    }}>
-                      {event.user}
-                    </div>
+          return (
+            <Card
+              key={i}
+              onClick={() => day && setForm({ date: day.key, time: "", title: "" }) || setShowModal(true)}
+              style={{
+                border: isToday ? "2px solid #22c55e" : undefined,
+                boxShadow: isToday ? "0 0 12px rgba(34,197,94,0.6)" : undefined
+              }}
+            >
+              {day && (
+                <>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                    {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
                   </div>
-                ))}
-              </>
-            )}
-          </Card>
-        ))}
+
+                  {grouped[day.key]?.map(event => (
+                    <div
+                      key={event.id}
+                      onClick={(e) => handleEventClick(e, event)}
+                      style={{
+                        borderLeft: `3px solid ${colors[event.user]}`,
+                        padding: 6,
+                        marginBottom: 6,
+                        background: "rgba(255,255,255,0.03)"
+                      }}
+                    >
+                      <div>{event.title}</div>
+                      <div style={{ fontSize: 11 }}>{formatTime(event.time)}</div>
+                      <div style={{ fontSize: 10, color: colors[event.user] }}>
+                        {event.user}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </Card>
+          );
+        })}
       </div>
 
       {/* LOGIN MODAL */}
       {showLoginModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)",
-          display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"
         }}>
-          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:280 }}>
-            <h3>Login</h3>
-            <input
-              type="password"
-              placeholder="Enter PIN"
-              value={pinInput}
-              onChange={(e)=>setPinInput(e.target.value)}
-              style={{ width:"100%", marginBottom:10 }}
-            />
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
+            <input value={pinInput} onChange={e=>setPinInput(e.target.value)} />
             <Button onClick={login}>Login</Button>
           </div>
         </div>
@@ -343,38 +300,14 @@ export default function App() {
       {showModal && (
         <div style={{
           position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.6)",
-          display:"flex",alignItems:"center",justifyContent:"center"
+          background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"
         }}>
-          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:300 }}>
-            <h3>{editingId ? "Edit Event" : "Add Event"}</h3>
-            <div>Date: {form.date}</div>
-
-            <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
-              <option value="">Select time</option>
-              {timeOptions.map(t=>(
-                <option key={t} value={t}>{formatTime(t)}</option>
-              ))}
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
+            <select onChange={e=>setForm({...form,time:e.target.value})}>
+              {timeOptions.map(t=><option key={t}>{t}</option>)}
             </select>
-
-            <input
-              placeholder="Note"
-              value={form.title}
-              onChange={(e)=>setForm({...form,title:e.target.value})}
-              style={{ width:"100%", marginTop:10 }}
-            />
-
-            <Button onClick={submitEvent}>
-              {editingId ? "Update" : "Save"}
-            </Button>
-
-            {editingId && (
-              <Button variant="danger" onClick={handleDelete}>Delete</Button>
-            )}
-
-            <Button variant="danger" onClick={()=>setShowModal(false)}>
-              Cancel
-            </Button>
+            <input onChange={e=>setForm({...form,title:e.target.value})}/>
+            <Button onClick={submitEvent}>Save</Button>
           </div>
         </div>
       )}

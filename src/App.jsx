@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, push } from "firebase/database";
+import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAfDf9HXxty8UrVQNvlVKxx_ERT9VLClQU",
@@ -17,9 +17,7 @@ const generateTimeOptions = () => {
   const times = [];
   for (let h = 0; h < 24; h++) {
     for (let m of [0, 30]) {
-      const hh = String(h).padStart(2, "0");
-      const mm = String(m).padStart(2, "0");
-      times.push(`${hh}:${mm}`);
+      times.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     }
   }
   return times;
@@ -43,19 +41,16 @@ const getColumns = () => {
 };
 
 const Card = ({ children, style, ...props }) => (
-  <div
-    {...props}
-    style={{
-      background: "#0f172a",
-      borderRadius: 12,
-      padding: 8,
-      minHeight: window.innerWidth < 600 ? 90 : 120,
-      fontSize: window.innerWidth < 600 ? 11 : 14,
-      border: "1px solid rgba(255,255,255,0.05)",
-      cursor: "pointer",
-      ...style,
-    }}
-  >
+  <div {...props} style={{
+    background: "#0f172a",
+    borderRadius: 12,
+    padding: 8,
+    minHeight: window.innerWidth < 600 ? 90 : 120,
+    fontSize: window.innerWidth < 600 ? 11 : 14,
+    border: "1px solid rgba(255,255,255,0.05)",
+    cursor: "pointer",
+    ...style,
+  }}>
     {children}
   </div>
 );
@@ -64,22 +59,20 @@ const Button = ({ children, variant = "primary", ...props }) => {
   const colors = {
     primary: "#22c55e",
     danger: "#ef4444",
+    secondary: "#334155"
   };
 
   return (
-    <button
-      {...props}
-      style={{
-        padding: "8px 12px",
-        borderRadius: 6,
-        border: "none",
-        background: colors[variant],
-        color: "white",
-        fontWeight: 600,
-        cursor: "pointer",
-        marginRight: 5,
-      }}
-    >
+    <button {...props} style={{
+      padding: "6px 10px",
+      borderRadius: 6,
+      border: "none",
+      background: colors[variant],
+      color: "white",
+      fontWeight: 600,
+      cursor: "pointer",
+      marginRight: 4,
+    }}>
       {children}
     </button>
   );
@@ -94,8 +87,9 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ date: "", time: "", title: "" });
+  const [editingId, setEditingId] = useState(null);
 
+  const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [recentNotes, setRecentNotes] = useState([]);
 
   const users = {
@@ -120,16 +114,14 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // LOAD NOTES PER USER
   useEffect(() => {
     if (!currentUser) return;
     const saved = JSON.parse(localStorage.getItem(`notes_${currentUser}`)) || [];
     setRecentNotes(saved);
   }, [currentUser]);
 
-  // LOGIN
   const login = () => {
-    const user = Object.keys(users).find((u) => users[u] === pinInput);
+    const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
@@ -138,37 +130,60 @@ export default function App() {
 
   const logout = () => setCurrentUser(null);
 
-  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
       const data = snap.val() || {};
-      const list = Object.entries(data).map(([id, val]) => ({
-        id,
-        ...val,
-      }));
-      setEvents(list);
+      setEvents(Object.entries(data).map(([id, val]) => ({ id, ...val })));
     });
   }, []);
 
   const submitEvent = () => {
     if (!form.time || !form.title) return;
 
-    push(ref(db, "events"), {
-      ...form,
-      user: currentUser,
-      createdAt: Date.now(),
-    });
+    if (editingId) {
+      update(ref(db, `events/${editingId}`), {
+        ...form,
+        user: currentUser,
+      });
+    } else {
+      push(ref(db, "events"), {
+        ...form,
+        user: currentUser,
+        createdAt: Date.now(),
+      });
+    }
 
-    // SAVE LAST 10 NOTES
-    let updated = [form.title, ...recentNotes.filter(n => n !== form.title)];
-    updated = updated.slice(0, 10);
-
-    setRecentNotes(updated);
-    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updated));
+    let updatedNotes = [form.title, ...recentNotes.filter(n => n !== form.title)].slice(0, 10);
+    setRecentNotes(updatedNotes);
+    localStorage.setItem(`notes_${currentUser}`, JSON.stringify(updatedNotes));
 
     setShowModal(false);
+    setEditingId(null);
     setForm({ date: "", time: "", title: "" });
+  };
+
+  const handleEdit = (e, event) => {
+    e.stopPropagation();
+
+    if (event.user !== currentUser) return;
+
+    setForm({
+      date: event.date,
+      time: event.time,
+      title: event.title,
+    });
+
+    setEditingId(event.id);
+    setShowModal(true);
+  };
+
+  const handleDelete = (e, event) => {
+    e.stopPropagation();
+
+    if (event.user !== currentUser) return;
+
+    remove(ref(db, `events/${event.id}`));
   };
 
   const changeMonth = (offset) => {
@@ -191,19 +206,14 @@ export default function App() {
   for (let i = 1; i <= daysInMonth; i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
 
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
+    const key = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 
-    calendarDays.push({
-      key: `${dd}/${mm}/${yyyy}`,
-      dateObj: d,
-    });
+    calendarDays.push({ key, dateObj: d });
   }
 
   const grouped = useMemo(() => {
     const g = {};
-    events.forEach((e) => {
+    events.forEach(e => {
       if (!g[e.date]) g[e.date] = [];
       g[e.date].push(e);
     });
@@ -216,12 +226,8 @@ export default function App() {
       return;
     }
 
-    const d = day.dateObj;
-    const formatted = `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}/${d.getFullYear()}`;
-
-    setForm({ date: formatted, time: "", title: "" });
+    setForm({ date: day.key, time: "", title: "" });
+    setEditingId(null);
     setShowModal(true);
   };
 
@@ -233,7 +239,6 @@ export default function App() {
   return (
     <div style={{ padding: 15, background: "#020617", minHeight: "100vh", color: "white" }}>
 
-      {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h1>🗓️ Balentina Schedule</h1>
 
@@ -252,21 +257,17 @@ export default function App() {
             <div style={{ color: colors[currentUser], fontWeight: 700 }}>
               {currentUser}
             </div>
-            <Button variant="danger" onClick={logout}>
-              Logout
-            </Button>
+            <Button variant="danger" onClick={logout}>Logout</Button>
           </>
         )}
       </div>
 
-      {/* MONTH */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
         <Button onClick={() => changeMonth(-1)}>◀</Button>
         <h2>{monthName}</h2>
         <Button onClick={() => changeMonth(1)}>▶</Button>
       </div>
 
-      {/* CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 10 }}>
         {calendarDays.map((day, i) => {
           const isToday = day && day.dateObj.toDateString() === today.toDateString();
@@ -279,11 +280,22 @@ export default function App() {
                     {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
                   </div>
 
-                  {grouped[day.key]?.map((e) => (
-                    <div key={e.id} style={{ borderLeft: `4px solid ${colors[e.user]}`, padding: 4 }}>
-                      <div>{e.title}</div>
-                      <div>{formatTime(e.time)}</div>
-                      <div style={{ color: colors[e.user] }}>{e.user}</div>
+                  {grouped[day.key]?.map(event => (
+                    <div key={event.id} style={{
+                      borderLeft: `4px solid ${colors[event.user]}`,
+                      padding: 4,
+                      marginBottom: 4
+                    }}>
+                      <div>{event.title}</div>
+                      <div>{formatTime(event.time)}</div>
+                      <div style={{ color: colors[event.user] }}>{event.user}</div>
+
+                      {event.user === currentUser && (
+                        <>
+                          <Button variant="secondary" onClick={(e)=>handleEdit(e, event)}>Edit</Button>
+                          <Button variant="danger" onClick={(e)=>handleDelete(e, event)}>Del</Button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </>
@@ -293,73 +305,43 @@ export default function App() {
         })}
       </div>
 
-      {/* MODAL */}
       {showModal && (
         <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "fixed", top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"
         }}>
-          <div style={{ background: "#0f172a", padding: 20, borderRadius: 12, width: 300 }}>
-            <h3>Add Event</h3>
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:300 }}>
+            <h3>{editingId ? "Edit Event" : "Add Event"}</h3>
             <div>User: {currentUser}</div>
             <div>Date: {form.date}</div>
 
-            <select
-              value={form.time}
-              onChange={(e) => setForm({ ...form, time: e.target.value })}
-              style={{ width: "100%", marginBottom: 10 }}
-            >
+            <select value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})}>
               <option value="">Select time</option>
-              {timeOptions.map((t) => (
+              {timeOptions.map(t=>(
                 <option key={t} value={t}>{formatTime(t)}</option>
               ))}
             </select>
 
-            {/* NOTE INPUT + DROPDOWN */}
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginTop:10 }}>
               <input
                 placeholder="Note"
                 value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                style={{ width: "100%", marginBottom: 5 }}
+                onChange={(e)=>setForm({...form,title:e.target.value})}
+                style={{ width:"100%", marginBottom:5 }}
               />
 
-              {recentNotes.length > 0 && (
-                <div style={{
-                  background: "#020617",
-                  border: "1px solid #334155",
-                  borderRadius: 6,
-                  maxHeight: 120,
-                  overflowY: "auto",
-                }}>
-                  {recentNotes.map((note, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setForm({ ...form, title: note })}
-                      style={{
-                        padding: 6,
-                        cursor: "pointer",
-                        borderBottom: "1px solid #1e293b",
-                      }}
-                    >
-                      {note}
-                    </div>
-                  ))}
+              {recentNotes.map((note,i)=>(
+                <div key={i} onClick={()=>setForm({...form,title:note})}
+                  style={{ padding:5,cursor:"pointer",background:"#020617",marginBottom:2 }}>
+                  {note}
                 </div>
-              )}
+              ))}
             </div>
 
-            <Button onClick={submitEvent}>Save</Button>
-            <Button variant="danger" onClick={() => setShowModal(false)}>
-              Cancel
+            <Button onClick={submitEvent}>
+              {editingId ? "Update" : "Save"}
             </Button>
+            <Button variant="danger" onClick={()=>setShowModal(false)}>Cancel</Button>
           </div>
         </div>
       )}

@@ -200,6 +200,20 @@ export default function App() {
     year: "numeric",
   });
 
+  const navBtn = {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    border: "none",
+    background: "#22c55e",
+    color: "white",
+    fontSize: 16,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  };
+
   return (
     <div style={{
       padding: 12,
@@ -231,17 +245,16 @@ export default function App() {
       </div>
 
       {/* MONTH */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <button onClick={() => changeMonth(-1)}>◀</button>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginBottom: 20 }}>
+        <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
-        <button onClick={() => changeMonth(1)}>▶</button>
+        <button style={navBtn} onClick={() => changeMonth(1)}>▶</button>
       </div>
 
       {/* CALENDAR */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns},1fr)`, gap: 10 }}>
         {calendarDays.map((day, i) => {
-          const isToday =
-            day && day.dateObj.toDateString() === today.toDateString();
+          const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
           return (
             <Card

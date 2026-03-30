@@ -88,6 +88,8 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
+  const [showLoginModal, setShowLoginModal] = useState(true);
+
   const [form, setForm] = useState({ date: "", time: "", title: "" });
   const [recentNotes, setRecentNotes] = useState([]);
 
@@ -119,16 +121,22 @@ export default function App() {
     setRecentNotes(saved);
   }, [currentUser]);
 
+  // LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
       setPinInput("");
+      setShowLoginModal(false);
     } else alert("Wrong PIN");
   };
 
-  const logout = () => setCurrentUser(null);
+  const logout = () => {
+    setCurrentUser(null);
+    setShowLoginModal(true);
+  };
 
+  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -164,7 +172,6 @@ export default function App() {
 
   const handleEventClick = (e, event) => {
     e.stopPropagation();
-
     if (event.user !== currentUser) return;
 
     setForm({
@@ -201,9 +208,7 @@ export default function App() {
 
   for (let i = 1; i <= daysInMonth; i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-
     const key = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
-
     calendarDays.push({ key, dateObj: d });
   }
 
@@ -217,11 +222,7 @@ export default function App() {
   }, [events]);
 
   const openModal = (day) => {
-    if (!day || !currentUser) {
-      alert("Login first");
-      return;
-    }
-
+    if (!day) return;
     setForm({ date: day.key, time: "", title: "" });
     setEditingId(null);
     setShowModal(true);
@@ -238,18 +239,7 @@ export default function App() {
       {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h1>🗓️ Balentina Schedule</h1>
-
-        {!currentUser ? (
-          <>
-            <input
-              type="password"
-              placeholder="PIN"
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value)}
-            />
-            <Button onClick={login}>Login</Button>
-          </>
-        ) : (
+        {currentUser && (
           <>
             <div style={{ color: colors[currentUser], fontWeight: 700 }}>
               {currentUser}
@@ -302,7 +292,31 @@ export default function App() {
         })}
       </div>
 
-      {/* MODAL */}
+      {/* LOGIN MODAL */}
+      {showLoginModal && (
+        <div style={{
+          position: "fixed",
+          top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.8)",
+          display:"flex",alignItems:"center",justifyContent:"center"
+        }}>
+          <div style={{ background:"#0f172a",padding:20,borderRadius:12,width:280 }}>
+            <h3>Login</h3>
+
+            <input
+              type="password"
+              placeholder="Enter PIN"
+              value={pinInput}
+              onChange={(e)=>setPinInput(e.target.value)}
+              style={{ width:"100%", marginBottom:10 }}
+            />
+
+            <Button onClick={login}>Login</Button>
+          </div>
+        </div>
+      )}
+
+      {/* EVENT MODAL */}
       {showModal && (
         <div style={{
           position: "fixed", top:0,left:0,width:"100%",height:"100%",

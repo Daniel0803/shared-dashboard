@@ -86,6 +86,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [columns, setColumns] = useState(getColumns());
+  const [viewMode, setViewMode] = useState("month");
 
   const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
@@ -182,6 +183,7 @@ export default function App() {
     }
   };
 
+  // ===== MONTH DAYS =====
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -192,6 +194,19 @@ export default function App() {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
     const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
     calendarDays.push({ key, dateObj: d });
+  }
+
+  // ===== WEEK DAYS =====
+  const startOfWeek = new Date(currentDate);
+  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+
+    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+    weekDays.push({ key, dateObj: d });
   }
 
   const grouped = useMemo(() => {
@@ -216,10 +231,7 @@ export default function App() {
     background: "#22c55e",
     color: "white",
     fontSize: 16,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
+    cursor: "pointer"
   };
 
   return (
@@ -232,47 +244,40 @@ export default function App() {
           <div style={{ opacity: 0.6 }}>Schedule</div>
         </div>
 
-        {currentUser && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ color: colors[currentUser] }}>{currentUser}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => setViewMode(viewMode === "month" ? "week" : "month")}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 20,
+              border: "none",
+              background: "#3b82f6",
+              color: "white",
+              cursor: "pointer"
+            }}
+          >
+            {viewMode === "month" ? "📊 Week View" : "📅 Month View"}
+          </button>
 
-            <button
-              onClick={logout}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 20,
-                border: "none",
-                background: "#ef4444",
-                color: "white",
-                cursor: "pointer"
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = "#dc2626"}
-              onMouseOut={(e) => e.currentTarget.style.background = "#ef4444"}
-            >
-              Logout
-            </button>
-          </div>
-        )}
+          {currentUser && (
+            <>
+              <div style={{ color: colors[currentUser] }}>{currentUser}</div>
+              <button onClick={logout} style={{ background:"#ef4444", color:"white", border:"none", borderRadius:20, padding:"6px 12px" }}>
+                Logout
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* TODAY BUTTON */}
       <div style={{ textAlign: "center", marginBottom: 10 }}>
-        <button
-          onClick={scrollToToday}
-          style={{
-            padding: "6px 12px",
-            borderRadius: 20,
-            border: "none",
-            background: "#22c55e",
-            color: "white",
-            cursor: "pointer"
-          }}
-        >
+        <button onClick={scrollToToday} style={{ padding:"6px 12px", borderRadius:20, background:"#22c55e", border:"none", color:"white" }}>
           Go to Today
         </button>
       </div>
 
-      {/* MONTH */}
+      {/* MONTH NAV */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
         <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
@@ -280,71 +285,36 @@ export default function App() {
       </div>
 
       {/* CALENDAR */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns},1fr)`, gap: 10 }}>
-        {calendarDays.map((day, i) => {
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: viewMode === "week" ? "repeat(7,1fr)" : `repeat(${columns},1fr)`,
+        gap: 10
+      }}>
+        {(viewMode === "week" ? weekDays : calendarDays).map((day, i) => {
           const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
           return (
-            <Card
-              key={i}
-              ref={isToday ? todayRef : null}
-              onClick={() => {
-                if (!day || !currentUser) return;
-                setForm({ date: day.key, time: "", title: "" });
-                setEditingId(null);
-                setShowModal(true);
-              }}
-              style={{
-                border: isToday ? "2px solid #22c55e" : undefined,
-                boxShadow: isToday ? "0 0 12px rgba(34,197,94,0.6)" : undefined
-              }}
-            >
+            <Card key={i} ref={isToday ? todayRef : null}>
               {day && (
                 <>
                   <div style={{ fontWeight: 600 }}>
                     {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
                   </div>
 
-                  {grouped[day.key]?.map(event => (
-                    <div key={event.id} onClick={(e)=>handleEventClick(e,event)}>
-                      {event.title}
-                    </div>
-                  ))}
+                  {grouped[day.key]
+                    ?.slice()
+                    .sort((a,b)=>a.time.localeCompare(b.time))
+                    .map(event => (
+                      <div key={event.id}>
+                        {formatTime(event.time)} — {event.title}
+                      </div>
+                    ))}
                 </>
               )}
             </Card>
           );
         })}
       </div>
-
-      {/* LOGIN MODAL */}
-      {showLoginModal && (
-        <div style={{
-          position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center"
-        }}>
-          <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <input value={pinInput} onChange={e=>setPinInput(e.target.value)} />
-            <Button onClick={login}>Login</Button>
-          </div>
-        </div>
-      )}
-
-      {/* EVENT MODAL */}
-      {showModal && (
-        <div style={{
-          position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center"
-        }}>
-          <div style={{ background:"#0f172a",padding:20,borderRadius:12 }}>
-            <select onChange={e=>setForm({...form,time:e.target.value})}>
-              {timeOptions.map(t=><option key={t}>{t}</option>)}
-            </select>
-            <input onChange={e=>setForm({...form,title:e.target.value})}/>
-            <Button onClick={submitEvent}>Save</Button>
-          </div>
-        </div>
-      )}
 
     </div>
   );

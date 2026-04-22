@@ -59,6 +59,7 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
+  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -67,6 +68,7 @@ export default function App() {
     });
   }, []);
 
+  // LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -84,7 +86,7 @@ export default function App() {
   const formatKey = (d) =>
     `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 
-  // CALENDAR
+  // CALENDAR BUILD
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -105,6 +107,7 @@ export default function App() {
     return g;
   }, [events]);
 
+  // ADD / EDIT
   const openAdd = (day) => {
     if (!currentUser) return;
     setForm({ date: day.key, time: "", title: "" });
@@ -135,11 +138,18 @@ export default function App() {
 
     setShowModal(false);
     setEditingId(null);
+    setForm({ date: "", time: "", title: "" });
   };
 
   const deleteEvent = () => {
     remove(ref(db, `events/${editingId}`));
     setShowModal(false);
+  };
+
+  const changeMonth = (offset) => {
+    const d = new Date(currentDate);
+    d.setMonth(currentDate.getMonth() + offset);
+    setCurrentDate(d);
   };
 
   const monthName = currentDate.toLocaleDateString("en-US", {
@@ -148,7 +158,14 @@ export default function App() {
   });
 
   return (
-    <div style={{ background:"#000", color:"white", minHeight:"100vh", padding:10 }}>
+    <div style={{
+      background:"#000",
+      color:"white",
+      minHeight:"100vh",
+      padding:10,
+      maxWidth:"100vw",
+      overflowX:"hidden"
+    }}>
 
       {/* HEADER */}
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
@@ -158,22 +175,38 @@ export default function App() {
         </div>
 
         {currentUser && (
-          <button onClick={logout} style={{ background:"#ef4444", color:"white" }}>
+          <button onClick={logout} style={{
+            background:"#ef4444",
+            border:"none",
+            padding:"6px 10px",
+            color:"white",
+            borderRadius:6
+          }}>
             Logout
           </button>
         )}
       </div>
 
       {/* MONTH */}
-      <h2 style={{ textAlign:"center" }}>{monthName}</h2>
+      <h2 style={{ textAlign:"center", marginBottom:10 }}>{monthName}</h2>
 
       {/* WEEK HEADER */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", textAlign:"center", opacity:0.7 }}>
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:"repeat(7,minmax(0,1fr))",
+        textAlign:"center",
+        opacity:0.7,
+        marginBottom:5
+      }}>
         {["S","M","T","W","T","F","S"].map(d => <div key={d}>{d}</div>)}
       </div>
 
       {/* CALENDAR */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:"repeat(7,minmax(0,1fr))",
+        gap:4
+      }}>
         {days.map((day,i)=>{
           if (!day) return <div key={i}></div>;
 
@@ -183,16 +216,19 @@ export default function App() {
             <div key={i}
               onClick={()=>openAdd(day)}
               style={{
-                minHeight:80,
-                borderTop:"1px solid #222",
+                minHeight:70,
                 padding:4,
-                border: isToday ? "2px solid #22c55e" : "1px solid #111"
+                borderRadius:6,
+                border: isToday ? "2px solid #22c55e" : "1px solid #111",
+                borderTop:"1px solid #222",
+                overflow:"hidden"
               }}
             >
-              <div>{day.dateObj.getDate()}</div>
+              <div style={{ fontSize:12 }}>{day.dateObj.getDate()}</div>
 
               {grouped[day.key]
-                ?.sort((a,b)=>a.time.localeCompare(b.time))
+                ?.slice()
+                .sort((a,b)=>a.time.localeCompare(b.time))
                 .map(ev=>(
                   <div key={ev.id}
                     onClick={(e)=>openEdit(e,ev)}
@@ -205,7 +241,8 @@ export default function App() {
                       color:"#000",
                       whiteSpace:"nowrap",
                       overflow:"hidden",
-                      textOverflow:"ellipsis"
+                      textOverflow:"ellipsis",
+                      maxWidth:"100%"
                     }}
                   >
                     {ev.title}
@@ -217,36 +254,59 @@ export default function App() {
       </div>
 
       {/* NAV */}
-      <div style={{ display:"flex", justifyContent:"center", gap:10, marginTop:10 }}>
-        <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()-1)))}
-          style={{ background:"#22c55e" }}>◀</button>
+      <div style={{
+        display:"flex",
+        justifyContent:"center",
+        gap:10,
+        marginTop:10
+      }}>
+        <button onClick={()=>changeMonth(-1)} style={{
+          background:"#22c55e",
+          padding:10,
+          borderRadius:8,
+          border:"none"
+        }}>
+          ◀
+        </button>
 
-        <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()+1)))}
-          style={{ background:"#22c55e" }}>▶</button>
+        <button onClick={()=>changeMonth(1)} style={{
+          background:"#22c55e",
+          padding:10,
+          borderRadius:8,
+          border:"none"
+        }}>
+          ▶
+        </button>
       </div>
 
       {/* MODAL */}
       {showModal && (
         <div style={{
-          position:"fixed", top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"
+          position:"fixed",top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.8)",
+          display:"flex",justifyContent:"center",alignItems:"center"
         }}>
-          <div style={{ background:"#111", padding:20 }}>
+          <div style={{ background:"#111", padding:20, borderRadius:10 }}>
             <input
               placeholder="Title"
               value={form.title}
               onChange={e=>setForm({...form,title:e.target.value})}
             />
 
-            <select onChange={e=>setForm({...form,time:e.target.value})}>
-              <option>Select time</option>
+            <select
+              value={form.time}
+              onChange={e=>setForm({...form,time:e.target.value})}
+            >
+              <option value="">Select time</option>
               {timeOptions.map(t=>(
-                <option key={t}>{formatTime(t)}</option>
+                <option key={t} value={t}>{formatTime(t)}</option>
               ))}
             </select>
 
-            <button onClick={saveEvent}>Save</button>
-            {editingId && <button onClick={deleteEvent}>Delete</button>}
+            <div style={{ marginTop:10 }}>
+              <button onClick={saveEvent}>Save</button>
+              {editingId && <button onClick={deleteEvent}>Delete</button>}
+            </div>
           </div>
         </div>
       )}
@@ -254,11 +314,17 @@ export default function App() {
       {/* LOGIN */}
       {showLogin && (
         <div style={{
-          position:"fixed", top:0,left:0,width:"100%",height:"100%",
-          background:"black", display:"flex", justifyContent:"center", alignItems:"center"
+          position:"fixed",top:0,left:0,width:"100%",height:"100%",
+          background:"black",
+          display:"flex",justifyContent:"center",alignItems:"center"
         }}>
-          <div style={{ background:"#111", padding:20 }}>
-            <input type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} />
+          <div style={{ background:"#111", padding:20, borderRadius:10 }}>
+            <input
+              type="password"
+              placeholder="PIN"
+              value={pinInput}
+              onChange={e=>setPinInput(e.target.value)}
+            />
             <button onClick={login}>Login</button>
           </div>
         </div>

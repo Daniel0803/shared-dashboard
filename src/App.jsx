@@ -12,7 +12,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ⏰ TIME OPTIONS
+// TIME OPTIONS
 const timeOptions = [];
 for (let h = 0; h < 24; h++) {
   for (let m of [0, 30]) {
@@ -59,7 +59,6 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
-  // 🔥 FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -68,7 +67,6 @@ export default function App() {
     });
   }, []);
 
-  // 🔐 LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -86,7 +84,6 @@ export default function App() {
   const formatKey = (d) =>
     `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 
-  // 📅 CALENDAR BUILD
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -107,10 +104,8 @@ export default function App() {
     return g;
   }, [events]);
 
-  // ➕ ADD / EDIT
   const openAdd = (day) => {
     if (!currentUser) return;
-
     setForm({ date: day.key, time: "", title: "" });
     setEditingId(null);
     setShowModal(true);
@@ -119,7 +114,6 @@ export default function App() {
   const openEdit = (e, ev) => {
     e.stopPropagation();
     if (ev.user !== currentUser) return;
-
     setForm(ev);
     setEditingId(ev.id);
     setShowModal(true);
@@ -214,7 +208,8 @@ export default function App() {
                 padding:6,
                 borderRadius:10,
                 border: isToday ? "2px solid #22c55e" : "1px solid rgba(255,255,255,0.05)",
-                cursor:"pointer"
+                cursor:"pointer",
+                overflow:"hidden" // ✅ FIX
               }}
             >
               <div style={{ fontWeight:600 }}>{day.dateObj.getDate()}</div>
@@ -225,12 +220,32 @@ export default function App() {
                 .map(ev=>(
                   <div key={ev.id}
                     onClick={(e)=>openEdit(e,ev)}
-                    style={{ display:"flex", gap:4, fontSize:10 }}
+                    style={{
+                      display:"flex",
+                      gap:4,
+                      fontSize:10,
+                      maxWidth:"100%",
+                      overflow:"hidden"
+                    }}
                   >
                     <div style={{ width:3, height:12, background:colors[ev.user] }} />
-                    <div>
-                      {ev.title}
-                      <div style={{ fontSize:9, color:colors[ev.user] }}>
+
+                    <div style={{
+                      display:"flex",
+                      flexDirection:"column",
+                      maxWidth:"100%",
+                      overflow:"hidden"
+                    }}>
+                      <div style={{ wordBreak:"break-word", lineHeight:"1.1" }}>
+                        {ev.title}
+                      </div>
+
+                      <div style={{
+                        fontSize:9,
+                        color:colors[ev.user],
+                        wordBreak:"break-word",
+                        lineHeight:"1.1"
+                      }}>
                         {formatTime(ev.time)} • {ev.user}
                       </div>
                     </div>

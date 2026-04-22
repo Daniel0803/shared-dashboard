@@ -38,7 +38,7 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
-  // FIREBASE
+  // 🔥 FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -47,7 +47,7 @@ export default function App() {
     });
   }, []);
 
-  // LOGIN
+  // 🔐 LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -66,7 +66,7 @@ export default function App() {
     return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
   };
 
-  // CALENDAR
+  // 📅 CALENDAR
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -93,15 +93,18 @@ export default function App() {
   }).toUpperCase();
 
   return (
-    <div style={{
-      background: "#000",
-      color: "white",
-      minHeight: "100vh",
-      padding: 10,
-      overflowX: "hidden" // ✅ FIX: remove side overflow
-    }}>
+    <div
+      style={{
+        padding: 12,
+        background: "#000",
+        minHeight: "100vh",
+        color: "white",
+        overflowX: "hidden",   // ✅ FIX overflow
+        maxWidth: "100vw"      // ✅ FIX overflow
+      }}
+    >
 
-      {/* ✅ HEADER RESTORED */}
+      {/* ✅ HEADER (RESTORED) */}
       <div style={{
         display: "flex",
         justifyContent: "space-between",
@@ -142,7 +145,7 @@ export default function App() {
       {/* WEEK HEADER */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(7,1fr)",
+        gridTemplateColumns: "repeat(7, minmax(0,1fr))", // ✅ FIX
         textAlign: "center",
         opacity: 0.7,
         marginBottom: 6
@@ -153,7 +156,7 @@ export default function App() {
       {/* CALENDAR */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(7,1fr)",
+        gridTemplateColumns: "repeat(7, minmax(0,1fr))", // ✅ FIX
         gap: 10
       }}>
         {days.map((day, i) => {
@@ -177,35 +180,39 @@ export default function App() {
                 {day.dateObj.getDate()}
               </div>
 
-              {grouped[day.key]?.map(ev => (
-                <div
-                  key={ev.id}
-                  style={{
-                    fontSize: 10,
-                    marginTop: 3,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4
-                  }}
-                >
-                  <div style={{
-                    width: 3,
-                    height: 12,
-                    background: colors[ev.user]
-                  }} />
-
-                  <div>
-                    {ev.title}
+              {/* EVENTS */}
+              {grouped[day.key]
+                ?.slice()
+                .sort((a, b) => a.time?.localeCompare(b.time))
+                .map(ev => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      fontSize: 10,
+                      marginTop: 3,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
                     <div style={{
-                      fontSize: 9,
-                      color: colors[ev.user],
-                      fontWeight: 600
-                    }}>
-                      {ev.user}
+                      width: 3,
+                      height: 12,
+                      background: colors[ev.user]
+                    }} />
+
+                    <div>
+                      {ev.title}
+                      <div style={{
+                        fontSize: 9,
+                        color: colors[ev.user],
+                        fontWeight: 600
+                      }}>
+                        {ev.user}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           );
         })}

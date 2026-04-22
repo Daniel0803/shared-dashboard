@@ -130,6 +130,12 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    if (viewMode === "week" && todayRef.current) {
+      todayRef.current.scrollIntoView({ inline: "center" });
+    }
+  }, [viewMode]);
+
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -183,7 +189,7 @@ export default function App() {
     }
   };
 
-  // ===== MONTH DAYS =====
+  // MONTH
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -196,7 +202,7 @@ export default function App() {
     calendarDays.push({ key, dateObj: d });
   }
 
-  // ===== WEEK DAYS =====
+  // WEEK
   const startOfWeek = new Date(currentDate);
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
 
@@ -223,17 +229,6 @@ export default function App() {
     year: "numeric",
   });
 
-  const navBtn = {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    border: "none",
-    background: "#22c55e",
-    color: "white",
-    fontSize: 16,
-    cursor: "pointer"
-  };
-
   return (
     <div style={{ padding: 12, background: "#000", minHeight: "100vh", color: "white" }}>
 
@@ -252,8 +247,7 @@ export default function App() {
               borderRadius: 20,
               border: "none",
               background: "#3b82f6",
-              color: "white",
-              cursor: "pointer"
+              color: "white"
             }}
           >
             {viewMode === "month" ? "📊 Week View" : "📅 Month View"}
@@ -270,7 +264,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* TODAY BUTTON */}
+      {/* TODAY */}
       <div style={{ textAlign: "center", marginBottom: 10 }}>
         <button onClick={scrollToToday} style={{ padding:"6px 12px", borderRadius:20, background:"#22c55e", border:"none", color:"white" }}>
           Go to Today
@@ -279,41 +273,55 @@ export default function App() {
 
       {/* MONTH NAV */}
       <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <button style={navBtn} onClick={() => changeMonth(-1)}>◀</button>
+        <button onClick={() => changeMonth(-1)}>◀</button>
         <h2>{monthName}</h2>
-        <button style={navBtn} onClick={() => changeMonth(1)}>▶</button>
+        <button onClick={() => changeMonth(1)}>▶</button>
       </div>
 
       {/* CALENDAR */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: viewMode === "week" ? "repeat(7,1fr)" : `repeat(${columns},1fr)`,
-        gap: 10
-      }}>
-        {(viewMode === "week" ? weekDays : calendarDays).map((day, i) => {
-          const isToday = day && day.dateObj.toDateString() === today.toDateString();
+      <div style={{ overflowX: viewMode === "week" && columns < 7 ? "auto" : "visible" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns:
+            viewMode === "week"
+              ? columns < 7 ? "repeat(7,140px)" : "repeat(7,1fr)"
+              : `repeat(${columns},1fr)`,
+          gap: 10,
+          minWidth: viewMode === "week" && columns < 7 ? 980 : "auto"
+        }}>
+          {(viewMode === "week" ? weekDays : calendarDays).map((day, i) => {
+            const isToday = day && day.dateObj.toDateString() === today.toDateString();
 
-          return (
-            <Card key={i} ref={isToday ? todayRef : null}>
-              {day && (
-                <>
-                  <div style={{ fontWeight: 600 }}>
-                    {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
-                  </div>
+            return (
+              <Card key={i} ref={isToday ? todayRef : null}>
+                {day && (
+                  <>
+                    <div style={{ fontWeight: 700 }}>
+                      {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
+                    </div>
 
-                  {grouped[day.key]
-                    ?.slice()
-                    .sort((a,b)=>a.time.localeCompare(b.time))
-                    .map(event => (
-                      <div key={event.id}>
-                        {formatTime(event.time)} — {event.title}
-                      </div>
-                    ))}
-                </>
-              )}
-            </Card>
-          );
-        })}
+                    {grouped[day.key]
+                      ?.slice()
+                      .sort((a,b)=>a.time.localeCompare(b.time))
+                      .map(event => (
+                        <div key={event.id} style={{
+                          borderLeft: `4px solid ${colors[event.user]}`,
+                          padding: 4,
+                          marginBottom: 6
+                        }}>
+                          <div>{event.title}</div>
+                          <div style={{ fontSize: 11 }}>{formatTime(event.time)}</div>
+                          <div style={{ color: colors[event.user], fontSize: 11 }}>
+                            {event.user}
+                          </div>
+                        </div>
+                      ))}
+                  </>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
     </div>

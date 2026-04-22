@@ -84,6 +84,7 @@ export default function App() {
   const formatKey = (d) =>
     `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 
+  // CALENDAR
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -134,7 +135,6 @@ export default function App() {
 
     setShowModal(false);
     setEditingId(null);
-    setForm({ date: "", time: "", title: "" });
   };
 
   const deleteEvent = () => {
@@ -148,53 +148,32 @@ export default function App() {
   });
 
   return (
-    <div style={{
-      padding: 12,
-      background: "#000",
-      minHeight: "100vh",
-      color: "white",
-      overflowX: "hidden"
-    }}>
+    <div style={{ background:"#000", color:"white", minHeight:"100vh", padding:10 }}>
 
       {/* HEADER */}
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
         <div>
-          <div style={{ fontSize:20, fontWeight:700 }}>🗓️ Balentina Schedule</div>
-          <div style={{ fontSize:12, opacity:0.6 }}>
-            {currentUser ? `Logged in: ${currentUser}` : "Not logged in"}
-          </div>
+          <div style={{ fontSize:20, fontWeight:700 }}>Balentina</div>
+          <div style={{ fontSize:12 }}>Schedule</div>
         </div>
 
         {currentUser && (
-          <button onClick={logout} style={{
-            background:"#ef4444", border:"none", padding:"6px 12px", borderRadius:8, color:"white"
-          }}>
+          <button onClick={logout} style={{ background:"#ef4444", color:"white" }}>
             Logout
           </button>
         )}
       </div>
 
       {/* MONTH */}
-      <div style={{ textAlign:"center", fontSize:22, marginBottom:10 }}>
-        {monthName}
-      </div>
+      <h2 style={{ textAlign:"center" }}>{monthName}</h2>
 
       {/* WEEK HEADER */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(7,minmax(0,1fr))",
-        textAlign:"center",
-        opacity:0.7
-      }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", textAlign:"center", opacity:0.7 }}>
         {["S","M","T","W","T","F","S"].map(d => <div key={d}>{d}</div>)}
       </div>
 
       {/* CALENDAR */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(7,minmax(0,1fr))",
-        gap:10
-      }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
         {days.map((day,i)=>{
           if (!day) return <div key={i}></div>;
 
@@ -204,51 +183,32 @@ export default function App() {
             <div key={i}
               onClick={()=>openAdd(day)}
               style={{
-                minHeight:90,
-                padding:6,
-                borderRadius:10,
-                border: isToday ? "2px solid #22c55e" : "1px solid rgba(255,255,255,0.05)",
-                cursor:"pointer",
-                overflow:"hidden" // ✅ FIX
+                minHeight:80,
+                borderTop:"1px solid #222",
+                padding:4,
+                border: isToday ? "2px solid #22c55e" : "1px solid #111"
               }}
             >
-              <div style={{ fontWeight:600 }}>{day.dateObj.getDate()}</div>
+              <div>{day.dateObj.getDate()}</div>
 
               {grouped[day.key]
-                ?.slice()
-                .sort((a,b)=>a.time.localeCompare(b.time))
+                ?.sort((a,b)=>a.time.localeCompare(b.time))
                 .map(ev=>(
                   <div key={ev.id}
                     onClick={(e)=>openEdit(e,ev)}
                     style={{
-                      display:"flex",
-                      gap:4,
+                      background:colors[ev.user],
+                      marginTop:2,
+                      borderRadius:4,
+                      padding:"2px 4px",
                       fontSize:10,
-                      maxWidth:"100%",
-                      overflow:"hidden"
+                      color:"#000",
+                      whiteSpace:"nowrap",
+                      overflow:"hidden",
+                      textOverflow:"ellipsis"
                     }}
                   >
-                    <div style={{ width:3, height:12, background:colors[ev.user] }} />
-
-                    <div style={{
-                      display:"flex",
-                      flexDirection:"column",
-                      maxWidth:"100%",
-                      overflow:"hidden"
-                    }}>
-                      <div style={{ wordBreak:"break-word", lineHeight:"1.1" }}>
-                        {ev.title}
-                      </div>
-
-                      <div style={{
-                        fontSize:9,
-                        color:colors[ev.user],
-                        wordBreak:"break-word",
-                        lineHeight:"1.1"
-                      }}>
-                        {formatTime(ev.time)} • {ev.user}
-                      </div>
-                    </div>
+                    {ev.title}
                   </div>
                 ))}
             </div>
@@ -257,53 +217,36 @@ export default function App() {
       </div>
 
       {/* NAV */}
-      <div style={{
-        position:"fixed",
-        bottom:20,
-        left:0,
-        right:0,
-        display:"flex",
-        justifyContent:"center",
-        gap:20
-      }}>
+      <div style={{ display:"flex", justifyContent:"center", gap:10, marginTop:10 }}>
         <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()-1)))}
-          style={{ background:"#22c55e", padding:12, borderRadius:10 }}>
-          ◀
-        </button>
+          style={{ background:"#22c55e" }}>◀</button>
 
         <button onClick={()=>setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth()+1)))}
-          style={{ background:"#22c55e", padding:12, borderRadius:10 }}>
-          ▶
-        </button>
+          style={{ background:"#22c55e" }}>▶</button>
       </div>
 
       {/* MODAL */}
       {showModal && (
         <div style={{
-          position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"rgba(0,0,0,0.8)",display:"flex",justifyContent:"center",alignItems:"center"
+          position:"fixed", top:0,left:0,width:"100%",height:"100%",
+          background:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"
         }}>
-          <div style={{ background:"#0f172a", padding:20, borderRadius:12 }}>
+          <div style={{ background:"#111", padding:20 }}>
             <input
               placeholder="Title"
               value={form.title}
               onChange={e=>setForm({...form,title:e.target.value})}
             />
 
-            <select
-              value={form.time}
-              onChange={e=>setForm({...form,time:e.target.value})}
-            >
-              <option value="">Select time</option>
+            <select onChange={e=>setForm({...form,time:e.target.value})}>
+              <option>Select time</option>
               {timeOptions.map(t=>(
-                <option key={t} value={t}>{formatTime(t)}</option>
+                <option key={t}>{formatTime(t)}</option>
               ))}
             </select>
 
-            <div>
-              <button onClick={saveEvent}>Save</button>
-              {editingId && <button onClick={deleteEvent}>Delete</button>}
-            </div>
+            <button onClick={saveEvent}>Save</button>
+            {editingId && <button onClick={deleteEvent}>Delete</button>}
           </div>
         </div>
       )}
@@ -311,16 +254,11 @@ export default function App() {
       {/* LOGIN */}
       {showLogin && (
         <div style={{
-          position:"fixed",top:0,left:0,width:"100%",height:"100%",
-          background:"black",display:"flex",justifyContent:"center",alignItems:"center"
+          position:"fixed", top:0,left:0,width:"100%",height:"100%",
+          background:"black", display:"flex", justifyContent:"center", alignItems:"center"
         }}>
-          <div style={{ background:"#0f172a", padding:20 }}>
-            <input
-              type="password"
-              placeholder="PIN"
-              value={pinInput}
-              onChange={e=>setPinInput(e.target.value)}
-            />
+          <div style={{ background:"#111", padding:20 }}>
+            <input type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} />
             <button onClick={login}>Login</button>
           </div>
         </div>

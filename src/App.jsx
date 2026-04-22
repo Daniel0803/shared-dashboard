@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, push, update, remove } from "firebase/database";
+import { getDatabase, ref, onValue } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAfDf9HXxty8UrVQNvlVKxx_ERT9VLClQU",
@@ -12,92 +12,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ===== TIME OPTIONS =====
-const timeOptions = [];
-for (let h = 0; h < 24; h++) {
-  for (let m of [0, 30]) {
-    timeOptions.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-  }
-}
-
-const formatTime = (time) => {
-  if (!time) return "";
-  const [h, m] = time.split(":");
-  let hour = parseInt(h);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12;
-  return `${hour}:${m} ${ampm}`;
-};
-
-const getColumns = () => {
-  if (window.innerWidth < 600) return 2;
-  if (window.innerWidth < 900) return 4;
-  return 7;
-};
-
-// ===== UI =====
-const Card = React.forwardRef(({ children, style, ...props }, ref) => (
-  <div
-    ref={ref}
-    {...props}
-    style={{
-      background: "linear-gradient(145deg, #0f172a, #020617)",
-      borderRadius: 16,
-      padding: 10,
-      minHeight: 100,
-      fontSize: 13,
-      border: "1px solid rgba(255,255,255,0.05)",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-      cursor: "pointer",
-      transition: "0.2s",
-      ...style,
-    }}
-  >
-    {children}
-  </div>
-));
-
-const Button = ({ children, variant = "primary", ...props }) => {
-  const colors = {
-    primary: "#22c55e",
-    danger: "#ef4444",
-  };
-
-  return (
-    <button
-      {...props}
-      style={{
-        padding: "6px 10px",
-        borderRadius: 8,
-        border: "none",
-        background: colors[variant],
-        color: "white",
-        fontWeight: 600,
-        cursor: "pointer",
-        marginTop: 8
-      }}
-    >
-      {children}
-    </button>
-  );
-};
-
 export default function App() {
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [columns, setColumns] = useState(getColumns());
-  const [viewMode, setViewMode] = useState("month");
 
   const [currentUser, setCurrentUser] = useState(null);
   const [pinInput, setPinInput] = useState("");
-  const [showLoginModal, setShowLoginModal] = useState(true);
+  const [showLogin, setShowLogin] = useState(true);
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-
-  const [form, setForm] = useState({ date: "", time: "", title: "" });
-
-  const todayRef = useRef(null);
   const today = new Date();
 
   const users = {
@@ -116,12 +38,7 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
-  useEffect(() => {
-    const handleResize = () => setColumns(getColumns());
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
+  // 🔥 FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -130,89 +47,32 @@ export default function App() {
     });
   }, []);
 
-  useEffect(() => {
-    if (viewMode === "week" && todayRef.current) {
-      todayRef.current.scrollIntoView({ inline: "center" });
-    }
-  }, [viewMode]);
-
+  // 🔐 LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
       setCurrentUser(user);
+      setShowLogin(false);
       setPinInput("");
-      setShowLoginModal(false);
     } else alert("Wrong PIN");
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    setShowLoginModal(true);
+  // 📅 FORMAT DATE
+  const formatKey = (d) => {
+    return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
   };
 
-  const submitEvent = () => {
-    if (!form.time || !form.title) return;
-
-    if (editingId) {
-      update(ref(db, `events/${editingId}`), { ...form, user: currentUser });
-    } else {
-      push(ref(db, "events"), { ...form, user: currentUser, createdAt: Date.now() });
-    }
-
-    setShowModal(false);
-    setEditingId(null);
-    setForm({ date: "", time: "", title: "" });
-  };
-
-  const handleEventClick = (e, event) => {
-    e.stopPropagation();
-    if (event.user !== currentUser) return;
-    setForm(event);
-    setEditingId(event.id);
-    setShowModal(true);
-  };
-
-  const handleDelete = () => {
-    remove(ref(db, `events/${editingId}`));
-    setShowModal(false);
-  };
-
-  const changeMonth = (offset) => {
-    const d = new Date(currentDate);
-    d.setMonth(currentDate.getMonth() + offset);
-    setCurrentDate(d);
-  };
-
-  const scrollToToday = () => {
-    if (todayRef.current) {
-      todayRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  };
-
-  // MONTH
+  // 📅 BUILD CALENDAR
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-  const calendarDays = [];
-  for (let i = 0; i < start.getDay(); i++) calendarDays.push(null);
+  const days = [];
+
+  for (let i = 0; i < start.getDay(); i++) days.push(null);
 
   for (let i = 1; i <= end.getDate(); i++) {
     const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
-    calendarDays.push({ key, dateObj: d });
-  }
-
-  // WEEK
-  const startOfWeek = new Date(currentDate);
-  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
-
-  const weekDays = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + i);
-
-    const key = `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
-    weekDays.push({ key, dateObj: d });
+    days.push({ dateObj: d, key: formatKey(d) });
   }
 
   const grouped = useMemo(() => {
@@ -224,105 +84,157 @@ export default function App() {
     return g;
   }, [events]);
 
-  const monthName = currentDate.toLocaleDateString("en-GB", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthName = currentDate.toLocaleDateString("en-US", {
+    month: "short",
+  }).toUpperCase();
 
   return (
-    <div style={{ padding: 12, background: "#000", minHeight: "100vh", color: "white" }}>
+    <div style={{ background: "#000", color: "white", minHeight: "100vh", padding: 10 }}>
 
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>🗓️ Balentina</div>
-          <div style={{ opacity: 0.6 }}>Schedule</div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={() => setViewMode(viewMode === "month" ? "week" : "month")}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 20,
-              border: "none",
-              background: "#3b82f6",
-              color: "white"
-            }}
-          >
-            {viewMode === "month" ? "📊 Week View" : "📅 Month View"}
-          </button>
-
-          {currentUser && (
-            <>
-              <div style={{ color: colors[currentUser] }}>{currentUser}</div>
-              <button onClick={logout} style={{ background:"#ef4444", color:"white", border:"none", borderRadius:20, padding:"6px 12px" }}>
-                Logout
-              </button>
-            </>
-          )}
-        </div>
+      <div style={{ textAlign: "center", fontSize: 22, marginBottom: 10 }}>
+        {monthName}
       </div>
 
-      {/* TODAY */}
-      <div style={{ textAlign: "center", marginBottom: 10 }}>
-        <button onClick={scrollToToday} style={{ padding:"6px 12px", borderRadius:20, background:"#22c55e", border:"none", color:"white" }}>
-          Go to Today
-        </button>
-      </div>
-
-      {/* MONTH NAV */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
-        <button onClick={() => changeMonth(-1)}>◀</button>
-        <h2>{monthName}</h2>
-        <button onClick={() => changeMonth(1)}>▶</button>
+      {/* WEEK HEADER */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7,1fr)",
+        textAlign: "center",
+        opacity: 0.7,
+        marginBottom: 6
+      }}>
+        {["S","M","T","W","T","F","S"].map(d => <div key={d}>{d}</div>)}
       </div>
 
       {/* CALENDAR */}
-      <div style={{ overflowX: viewMode === "week" && columns < 7 ? "auto" : "visible" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns:
-            viewMode === "week"
-              ? columns < 7 ? "repeat(7,140px)" : "repeat(7,1fr)"
-              : `repeat(${columns},1fr)`,
-          gap: 10,
-          minWidth: viewMode === "week" && columns < 7 ? 980 : "auto"
-        }}>
-          {(viewMode === "week" ? weekDays : calendarDays).map((day, i) => {
-            const isToday = day && day.dateObj.toDateString() === today.toDateString();
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 10 }}>
+        {days.map((day, i) => {
+          if (!day) return <div key={i}></div>;
 
-            return (
-              <Card key={i} ref={isToday ? todayRef : null}>
-                {day && (
-                  <>
-                    <div style={{ fontWeight: 700 }}>
-                      {day.dateObj.toLocaleDateString("en-US", { weekday: "short" })} - {day.dateObj.getDate()}
+          const isToday = day.dateObj.toDateString() === today.toDateString();
+
+          return (
+            <div
+              key={i}
+              style={{
+                minHeight: 80,
+                padding: 6,
+                borderRadius: 10,
+                border: isToday
+                  ? "2px solid #22c55e"
+                  : "1px solid rgba(255,255,255,0.05)"
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>
+                {day.dateObj.getDate()}
+              </div>
+
+              {/* EVENTS */}
+              {grouped[day.key]
+                ?.slice()
+                .sort((a, b) => a.time?.localeCompare(b.time))
+                .map(ev => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      fontSize: 10,
+                      marginTop: 3,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4
+                    }}
+                  >
+                    {/* COLOR BAR */}
+                    <div style={{
+                      width: 3,
+                      height: 12,
+                      background: colors[ev.user]
+                    }} />
+
+                    {/* TEXT */}
+                    <div>
+                      {ev.title}
+                      <div style={{
+                        fontSize: 9,
+                        color: colors[ev.user],
+                        fontWeight: 600
+                      }}>
+                        {ev.user}
+                      </div>
                     </div>
-
-                    {grouped[day.key]
-                      ?.slice()
-                      .sort((a,b)=>a.time.localeCompare(b.time))
-                      .map(event => (
-                        <div key={event.id} style={{
-                          borderLeft: `4px solid ${colors[event.user]}`,
-                          padding: 4,
-                          marginBottom: 6
-                        }}>
-                          <div>{event.title}</div>
-                          <div style={{ fontSize: 11 }}>{formatTime(event.time)}</div>
-                          <div style={{ color: colors[event.user], fontSize: 11 }}>
-                            {event.user}
-                          </div>
-                        </div>
-                      ))}
-                  </>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                  </div>
+                ))}
+            </div>
+          );
+        })}
       </div>
+
+      {/* MONTH NAV */}
+      <div style={{
+        position: "fixed",
+        bottom: 20,
+        left: 0,
+        right: 0,
+        display: "flex",
+        justifyContent: "center",
+        gap: 20
+      }}>
+        <button
+          onClick={() =>
+            setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)))
+          }
+          style={{
+            background: "#22c55e",
+            border: "none",
+            padding: 12,
+            borderRadius: 10,
+            color: "white"
+          }}
+        >
+          ◀
+        </button>
+
+        <button
+          onClick={() =>
+            setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)))
+          }
+          style={{
+            background: "#22c55e",
+            border: "none",
+            padding: 12,
+            borderRadius: 10,
+            color: "white"
+          }}
+        >
+          ▶
+        </button>
+      </div>
+
+      {/* LOGIN */}
+      {showLogin && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "black",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+          <div style={{ background:"#0f172a", padding:20, borderRadius:12 }}>
+            <input
+              placeholder="PIN"
+              value={pinInput}
+              onChange={e => setPinInput(e.target.value)}
+              style={{ padding: 8, marginRight: 10 }}
+            />
+            <button onClick={login}>Login</button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

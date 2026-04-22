@@ -38,7 +38,7 @@ export default function App() {
     Marelly: "#a855f7",
   };
 
-  // 🔥 FIREBASE
+  // FIREBASE
   useEffect(() => {
     const eventsRef = ref(db, "events");
     onValue(eventsRef, (snap) => {
@@ -47,7 +47,7 @@ export default function App() {
     });
   }, []);
 
-  // 🔐 LOGIN
+  // LOGIN
   const login = () => {
     const user = Object.keys(users).find(u => users[u] === pinInput);
     if (user) {
@@ -57,12 +57,16 @@ export default function App() {
     } else alert("Wrong PIN");
   };
 
-  // 📅 FORMAT DATE
+  const logout = () => {
+    setCurrentUser(null);
+    setShowLogin(true);
+  };
+
   const formatKey = (d) => {
     return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
   };
 
-  // 📅 BUILD CALENDAR
+  // CALENDAR
   const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -89,9 +93,48 @@ export default function App() {
   }).toUpperCase();
 
   return (
-    <div style={{ background: "#000", color: "white", minHeight: "100vh", padding: 10 }}>
+    <div style={{
+      background: "#000",
+      color: "white",
+      minHeight: "100vh",
+      padding: 10,
+      overflowX: "hidden" // ✅ FIX: remove side overflow
+    }}>
 
-      {/* HEADER */}
+      {/* ✅ HEADER RESTORED */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 10
+      }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            🗓️ Balentina Schedule
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.6 }}>
+            {currentUser ? `Logged in: ${currentUser}` : "Not logged in"}
+          </div>
+        </div>
+
+        {currentUser && (
+          <button
+            onClick={logout}
+            style={{
+              background: "#ef4444",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: 8,
+              color: "white",
+              cursor: "pointer"
+            }}
+          >
+            Logout
+          </button>
+        )}
+      </div>
+
+      {/* MONTH */}
       <div style={{ textAlign: "center", fontSize: 22, marginBottom: 10 }}>
         {monthName}
       </div>
@@ -108,7 +151,11 @@ export default function App() {
       </div>
 
       {/* CALENDAR */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 10 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7,1fr)",
+        gap: 10
+      }}>
         {days.map((day, i) => {
           if (!day) return <div key={i}></div>;
 
@@ -130,41 +177,35 @@ export default function App() {
                 {day.dateObj.getDate()}
               </div>
 
-              {/* EVENTS */}
-              {grouped[day.key]
-                ?.slice()
-                .sort((a, b) => a.time?.localeCompare(b.time))
-                .map(ev => (
-                  <div
-                    key={ev.id}
-                    style={{
-                      fontSize: 10,
-                      marginTop: 3,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4
-                    }}
-                  >
-                    {/* COLOR BAR */}
-                    <div style={{
-                      width: 3,
-                      height: 12,
-                      background: colors[ev.user]
-                    }} />
+              {grouped[day.key]?.map(ev => (
+                <div
+                  key={ev.id}
+                  style={{
+                    fontSize: 10,
+                    marginTop: 3,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <div style={{
+                    width: 3,
+                    height: 12,
+                    background: colors[ev.user]
+                  }} />
 
-                    {/* TEXT */}
-                    <div>
-                      {ev.title}
-                      <div style={{
-                        fontSize: 9,
-                        color: colors[ev.user],
-                        fontWeight: 600
-                      }}>
-                        {ev.user}
-                      </div>
+                  <div>
+                    {ev.title}
+                    <div style={{
+                      fontSize: 9,
+                      color: colors[ev.user],
+                      fontWeight: 600
+                    }}>
+                      {ev.user}
                     </div>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           );
         })}

@@ -95,7 +95,7 @@ export default function App() {
   const [recentNotes, setRecentNotes] = useState([]);
 
   const users = {
-    Daniel: "0803",
+    Daniel: "030803",
     Dillon: "2712",
     Marlon: "1004",
     Dellary: "2608",
